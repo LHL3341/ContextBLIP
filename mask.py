@@ -9,6 +9,8 @@ def mask_text(input_ids):
         mask = random.randint(0,text_length-1)
         mask_ids[b,mask] = 103
         mask_map[b,mask] = 1
+
+
     return mask_ids, mask_map
 
 
@@ -25,7 +27,10 @@ def mask_image(image,avg_attention_map,num_patches=196, mask_rate=0.5):
     ).permute(0, 2, 4, 3, 5, 1).reshape(b, num_patches, -1)
     batch_size = image.shape[0]
     mask_num = int(mask_rate * num_patches)
-    mask = avg_attention_map[:,random.randint(0,avg_attention_map.shape[1]-1)].clone()
+
+    masked_token = random.randint(0,avg_attention_map.shape[1]-1)
+
+    mask = avg_attention_map[:,masked_token].clone()
     mask /= mask.norm(dim=-1).unsqueeze(1)
     noise = torch.rand(batch_size,num_patches)*0.02
 
@@ -35,3 +40,4 @@ def mask_image(image,avg_attention_map,num_patches=196, mask_rate=0.5):
     unmasked_idx = idx[:,mask_num:]
 
     return patches,masked_idx,unmasked_idx
+
