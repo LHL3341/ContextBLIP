@@ -95,7 +95,7 @@ class Adapter_BLIP(nn.Module):
                                             return_dict = True, mode = 'text')  # [b,30,768]      
             text_feat = F.normalize(self.pretrained_blip.text_proj(text_output.last_hidden_state[:,0,:]),dim=-1)# [b,256]                 
              
-        image_embeds = self.vision_adapter(image_embeds)
+        image_embeds = image_embeds + self.vision_adapter(image_embeds)
 
         ###============== Image-text Matching ===================###
         encoder_input_ids = text.input_ids.clone()
@@ -206,8 +206,8 @@ class Adapter_BLIP(nn.Module):
                 unmask_tokens = blk(unmask_tokens)
             unmask_tokens = self.pretrained_blip.visual_encoder.norm(unmask_tokens)
         
-        unmask_tokens = self.vision_adapter(unmask_tokens)
-        text_embeds = self.text_adapter(output_pos.last_hidden_state)
+        unmask_tokens = unmask_tokens + self.vision_adapter(unmask_tokens)
+        text_embeds = output_pos.last_hidden_state + self.text_adapter(output_pos.last_hidden_state)
 
         masked_tokens = self.mask_embed[None, None, :].repeat(B, masked_idx.shape[1], 1)
         masked_tokens += self.decoder_pos_embed(masked_idx)
