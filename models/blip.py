@@ -20,6 +20,7 @@ import os
 from urllib.parse import urlparse
 from timm.models.hub import download_cached_file
 
+
 class BLIP_Base(nn.Module):
     def __init__(self,                 
                  med_config = 'configs/med_config.json',  
@@ -40,7 +41,12 @@ class BLIP_Base(nn.Module):
         self.tokenizer = init_tokenizer()   
         med_config = BertConfig.from_json_file(med_config)
         med_config.encoder_width = vision_width
-        self.text_encoder = BertModel(config=med_config, add_pooling_layer=False)  
+        
+        self.text_encoder = BertModel(config=med_config, add_pooling_layer=False)
+        self.text_encoder.resize_token_embeddings(len(self.tokenizer)) 
+        self.itm_head = nn.Linear(vision_width, 2)
+        self.vision_proj = nn.Linear(vision_width,256)
+        self.text_proj = nn.Linear(vision_width,256)    
 
         
     def forward(self, image, caption, mode):
@@ -231,7 +237,7 @@ def load_checkpoint(model,url_or_filename):
         if key in state_dict.keys():
             if state_dict[key].shape!=model.state_dict()[key].shape:
                 del state_dict[key]
-    
+    state_dict['text_encoder.embeddings.word_embeddings.weight']= state_dict['text_decoder.bert.embeddings.word_embeddings.weight']
     msg = model.load_state_dict(state_dict,strict=False)
     print('load checkpoint from %s'%url_or_filename)  
     return model,msg
