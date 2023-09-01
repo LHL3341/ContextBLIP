@@ -8,6 +8,7 @@
 import argparse
 import os
 #os.environ['CUDA_VISIBLE_DEVICES']='1'
+#os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 import ruamel.yaml as yaml
 import numpy as np
 import random
@@ -23,7 +24,8 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 from torch.utils.data import DataLoader
 
-from models.mask_pretrain import blip_pretrain
+#from models.mask_pretrain import blip_pretrain
+from models.mask_adapter import blip_pretrain
 import utils
 from utils import warmup_lr_schedule, step_lr_schedule
 from data import create_dataset, create_sampler, create_loader
@@ -65,7 +67,9 @@ def train(model, data_loader, optimizer, epoch, device, config):
 
         loss.backward()
         optimizer.step()    
-
+        #for name, param in model.named_parameters():
+        #    if param.grad is not None:
+        #        print(name)
         metric_logger.update(loss_ita=loss_ita.item())
         metric_logger.update(loss_itm=loss_itm.item())
         metric_logger.update(loss_mlm=loss_mlm.item())
