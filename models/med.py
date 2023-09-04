@@ -685,6 +685,7 @@ class BertModel(BertPreTrainedModel):
         return_dict=None,
         is_decoder=False,
         mode='multimodal',
+        prompt=None
     ):
         r"""
         encoder_hidden_states  (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, hidden_size)`, `optional`):
@@ -778,7 +779,9 @@ class BertModel(BertPreTrainedModel):
             )# [b,30,768]
         else:
             embedding_output = encoder_embeds
-            
+        if prompt is not None:
+            embedding_output = torch.cat([prompt,embedding_output],dim=1)
+
         encoder_outputs = self.encoder(
             embedding_output,
             attention_mask=extended_attention_mask,

@@ -1,6 +1,5 @@
 import json
 import os
-import random
 
 from torch.utils.data import Dataset
 
@@ -16,12 +15,11 @@ class pretrain_dataset(Dataset):
     def __init__(self, ann_file, laion_path, transform): 
 
         self.ann_pretrain = []
-        numsample = 100000
         for f in ann_file:
             print('loading '+f)
             ann = json.load(open(f,'r'))
             self.ann_pretrain += ann
-        self.ann_pretrain = self.ann_pretrain[:numsample]
+        #self.ann_pretrain = self.ann_pretrain[:numsample]
         
         self.laion_path = laion_path
         if self.laion_path:
@@ -36,7 +34,6 @@ class pretrain_dataset(Dataset):
             self.annotation = self.ann_pretrain
             
         self.transform = transform
-
 
     def reload_laion(self, epoch):
         n = epoch%len(self.laion_files)

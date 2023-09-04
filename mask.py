@@ -1,6 +1,21 @@
 import random
 import torch
-def mask_text(input_ids):
+from transformers import BertTokenizer
+import time
+import json
+from data.utils import pre_caption
+
+
+pos_list = ['ADJ','ADP','ADV','AUX','CCONJ','DET','INTJ','NOUN','NUM','PART','PRON',
+            'PROPN','PUNCT','SCONJ','SYM','VERB','X']
+pos ={}
+with open('pos_tags.json') as f:
+    json_file = json.load(f)
+for key, value in json_file.items():
+    pos[pre_caption(key,30)] = value
+print("captions:",len(pos))
+
+def mask_text_(input_ids):
     mask_map = torch.zeros_like(input_ids)
     mask_ids = input_ids.clone()
     for b, input_id in enumerate(input_ids):
@@ -41,3 +56,26 @@ def mask_image(image,avg_attention_map,num_patches=196, mask_rate=0.5):
 
     return patches,masked_idx,unmasked_idx
 
+def mask_text(texts,tokenizer):
+    
+    masked_ids = []
+    poses = []
+    for text in texts:
+
+        tags = pos[text]
+        masked_id = random.randint(0,len(tags)-1)
+        masked_pos = tags[masked_id][1]
+
+        prefix = pre_caption(' '.join([word[0] for word in tags[:masked_id]]),30)
+        suffix = pre_caption(' '.join([word[0] for word in tags[masked_id+1:]]),30)
+
+        masked_word = ' '.join(["[MASK]" for _ in tokenizer(tags[masked_id][0]).input_ids[1:-1]])
+        
+        masked_text = tokenizer(' '.join([prefix, masked_word, suffix]),padding='max_length', truncation=True, max_length=30, 
+                                return_tensors="pt")
+
+        masked_ids.append(masked_text.input_ids)
+        poses.append(pos_list.index(masked_pos))
+
+    masked_ids = torch.stack(masked_ids,dim=0).squeeze()
+    return masked_ids,poses

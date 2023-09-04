@@ -10,6 +10,7 @@ from torchvision.transforms.functional import InterpolationMode
 #from data.nlvr_dataset import nlvr_dataset
 from data.pretrain_dataset import pretrain_dataset
 from transform.randaugment import RandomAugment
+from data.dataset import ImageCoDeDataset
 
 def create_dataset(dataset, config, min_scale=0.5):
     
@@ -66,6 +67,20 @@ def create_dataset(dataset, config, min_scale=0.5):
         train_dataset = nlvr_dataset(transform_train, config['image_root'], config['ann_root'],'train')
         val_dataset = nlvr_dataset(transform_test, config['image_root'], config['ann_root'],'val')
         test_dataset = nlvr_dataset(transform_test, config['image_root'], config['ann_root'],'test')     
+        return train_dataset, val_dataset, test_dataset   
+    
+    elif dataset=='imagecode': 
+        train_dataset = ImageCoDeDataset(data_dir=config['image_root'],
+                                        split='train',
+                                        image_transform=transform_train,
+                                        text_transform=None
+                                    )
+        val_dataset = ImageCoDeDataset(data_dir=config['image_root'],
+                                        split='valid',
+                                        image_transform=transform_test,
+                                        text_transform=None
+                                    )  
+        test_dataset =None
         return train_dataset, val_dataset, test_dataset   
     
     
