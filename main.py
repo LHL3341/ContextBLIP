@@ -163,7 +163,7 @@ def main(args, config):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='configs/pretrain.yaml')
-    parser.add_argument('--output_dir', default='../output/Pretrain')  
+    parser.add_argument('--output_dir', default='./output/Pretrain')  
     parser.add_argument('--checkpoint', default='')    
     parser.add_argument('--evaluate', action='store_true',default=False)    
     parser.add_argument('--device', default='cuda')

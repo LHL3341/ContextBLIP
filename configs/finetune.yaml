@@ -1,5 +1,5 @@
-train_file: ['../pretrain_data/json_pretrain/coco.json',
-             '../pretrain_data/json_pretrain/vg.json',
+train_file: ['./pretrain_data/json_pretrain/coco.json',
+             './pretrain_data/json_pretrain/vg.json',
              ]
 laion_path: ''   
 

@@ -50,7 +50,7 @@ class pretrain_dataset(Dataset):
     def __getitem__(self, index):    
         
         ann = self.annotation[index]   
-        img_path = '../pretrain_data/vl_pair/'+ann['image'].removeprefix('/export/share/datasets/vision/')
+        img_path = 'pretrain_data/vl_pair/'+ann['image'].removeprefix('/export/share/datasets/vision/')
         image = Image.open(img_path).convert('RGB')   
         image = self.transform(image)
         caption = pre_caption(ann['caption'],30)

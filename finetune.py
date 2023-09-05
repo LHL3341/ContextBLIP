@@ -20,8 +20,8 @@ def find_best_matches(text_features, photo_features):
     return best_photo_idx, similarities, unsorted_sims
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--descr_path', type=str, default='../data/valid_data.json')
-parser.add_argument('--imgs_path', type=str, default='../data/image-set/')
+parser.add_argument('--descr_path', type=str, default='./data/valid_data.json')
+parser.add_argument('--imgs_path', type=str, default='./data/image-set/')
 args = parser.parse_args()
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f'USING DEVICE: {device}')
