@@ -55,7 +55,7 @@ class pretrain_dataset(Dataset):
             if not os.path.exists(img_path):
                 img_path = 'pretrain_data/vl_pair/visual-genome/VG_100K_2/'+ann['image'].removeprefix('/export/share/datasets/vision/visual-genome/image/')
         else:
-            img_path = 'pretrain_data/vl_pair/'+ann['image'].removeprefix('/export/share/datasets/vision/')
+            img_path = 'pretrain_data/vl_pair/coco/'+ann['image'].removeprefix('/export/share/datasets/vision/coco/images/')
 
         image = Image.open(img_path).convert('RGB')
         image = self.transform(image)
