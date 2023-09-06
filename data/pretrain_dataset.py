@@ -50,8 +50,14 @@ class pretrain_dataset(Dataset):
     def __getitem__(self, index):    
         
         ann = self.annotation[index]   
-        img_path = 'pretrain_data/vl_pair/'+ann['image'].removeprefix('/export/share/datasets/vision/')
-        image = Image.open(img_path).convert('RGB')   
+        if 'visual-genome' in ann['image']:
+            img_path = 'pretrain_data/vl_pair/visual-genome/VG_100K/'+ann['image'].removeprefix('/export/share/datasets/vision/visual-genome/image/')
+            if not os.path.exists(img_path):
+                img_path = 'pretrain_data/vl_pair/visual-genome/VG_100K_2/'+ann['image'].removeprefix('/export/share/datasets/vision/visual-genome/image/')
+        else:
+            img_path = 'pretrain_data/vl_pair/'+ann['image'].removeprefix('/export/share/datasets/vision/')
+
+        image = Image.open(img_path).convert('RGB')
         image = self.transform(image)
         caption = pre_caption(ann['caption'],30)
         
