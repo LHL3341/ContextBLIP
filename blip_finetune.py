@@ -178,6 +178,7 @@ for i in range(args.epochs):
         img_correct = 0
         img_total = 0
         ranks = defaultdict(int)
+        contextual_blip.eval()
         for img_dir, img_idx, text in tqdm.tqdm(valid):
             text = [text]
             img_idx = int(img_idx)
@@ -236,6 +237,7 @@ for i in range(args.epochs):
     print(f'EPOCH: {i}')
     step = 0
     random.shuffle(train)
+    contextual_blip.train()
     for img_dir, img_idx, text in train:
         step += 1
         text = [text]
