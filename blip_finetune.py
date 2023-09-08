@@ -57,7 +57,7 @@ def convert_models_to_fp32(model):
 class ContextualBLIP(torch.nn.Module):
     def __init__(self, bert_config, args):
         super(ContextualBLIP, self).__init__()
-        blip = BLIP_Base(med_config = 'configs/bert_config.json').to(device)
+        blip = BLIP_Base(med_config = 'configs/bert_config.json')
         self.blip, _ = load_checkpoint(blip, args.finetuned_checkpoint_path)
         config = BertConfig.from_dict(bert_config)
         config.hidden_size = 768
@@ -113,8 +113,8 @@ parser.add_argument("--frozen_blip", action="store_true",default=False)
 parser.add_argument("--finetuned_checkpoint_path", default='../model_base_14M.pth')
 parser.add_argument("--add_input", action="store_true",default=True)
 parser.add_argument("--positional", action="store_true",default=True)
-parser.add_argument("--head_scheduler", default= 0.9, type=float)
-parser.add_argument("--base_scheduler", default= 0.9, type=float)
+parser.add_argument("--head_scheduler", default= 0.95, type=float)
+parser.add_argument("--base_scheduler", default= 0.95, type=float)
 parser.add_argument("--transformer_layers", default=2, type=int)
 parser.add_argument("--all_pos", action="store_true",default=False)
 parser.add_argument('--epochs', type=int, default=20)
@@ -155,7 +155,7 @@ wandb.watch(contextual_blip)
 #     clip.model.convert_weights(
 #         contextual_blip)  # Actually this line is unnecessary since clip by default already on float16
 
-MAX_EPOCHS = 30
+MAX_EPOCHS = 20
 loss_mix = nn.CrossEntropyLoss()
 head_params = list(contextual_blip.transformer.parameters()) + list(contextual_blip.prediction_layer.parameters())
 if args.positional:
@@ -238,6 +238,8 @@ for i in range(args.epochs):
     step = 0
     random.shuffle(train)
     contextual_blip.train()
+    correct = 0
+    total = 0
     for img_dir, img_idx, text in train:
         step += 1
         text = [text]
@@ -268,6 +270,10 @@ for i in range(args.epochs):
         ground_truth = torch.tensor([img_idx]).long().to(device)  # the index of the correct one
         loss = loss_mix(logits, ground_truth)
         loss.backward()
+        pred = torch.argmax(logits).squeeze()
+        if img_idx == pred:
+            correct += 1
+        total += 1
         if step % config.batchsize == 0:
             print(f'TOTAL LOSS: {loss}')
             print('STEP: ' + str(step))
@@ -277,4 +283,6 @@ for i in range(args.epochs):
             #clip.model.convert_weights(contextual_blip)
             #contextual_blip.blip.float()
             optimizer.zero_grad()
+    wandb.log({'train_acc': acc})
+    acc = round(correct / total, 4)
     scheduler.step()
