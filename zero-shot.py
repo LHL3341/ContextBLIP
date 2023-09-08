@@ -38,7 +38,7 @@ parser.add_argument("--finetuned_checkpoint_path", default='output/Pretrain/chec
 
 parser.add_argument('--valid_descr_path', type=str, default='./data/valid_data.json')
 parser.add_argument('--train_descr_path', type=str, default='./data/train_data.json')
-parser.add_argument('--imgs_path', type=str, default='../data/image-sets')
+parser.add_argument('--imgs_path', type=str, default='./data/image-sets')
 
 args = parser.parse_args()
 
