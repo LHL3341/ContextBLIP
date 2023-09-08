@@ -31,7 +31,7 @@ bash run.sh
 
    
 
-3. 图片路径为./data/image-sets，标注路径为./data，如图所示![image-20230907165345041]("https://github.com/LHL3341/Adapter-BLIP/blob/main/README.assets/image-20230907165345041.png")
+3. 图片路径为./data/image-sets，标注路径为./data，如图所示<img src="https://github.com/LHL3341/Adapter-BLIP/blob/main/README.assets/image-20230907165345041.png" alt="image-20230905205919235" style="zoom:50%;" />
 
 4. ```bash
    nohup python -u finetune.py --finetuned_checkpoint_path {预训练模型路径} > finetune.log 2>&1 & #开始训练
