@@ -1,4 +1,4 @@
-### 实验说明
+### Pretrain
  
 1. 将 bert-base-uncased.zip、annotations.zip、pos_tag.json和模型文件model_base_14M.pth 置于./
 2. 修改预训练配置文件configs/pretrain.yaml中的train_file字段为包含coco.json和vg.json所在路径的列表
@@ -11,3 +11,36 @@ unzip bert-base-uncased.zip
 unzip annotations.zip
 bash run.sh
 ```
+
+### Finetune
+1. 下载imagecode数据集
+
+   图片：[image-sets.zip · BennoKrojer/ImageCoDe at main (huggingface.co)](https://huggingface.co/datasets/BennoKrojer/ImageCoDe/blob/main/image-sets.zip)
+
+   标注：[imagecode/data at main · McGill-NLP/imagecode (github.com)](https://github.com/McGill-NLP/imagecode/tree/main/data)目录下的3个json文件，分别为训练、验证和测试集
+
+2. ```bash
+   mkdir data
+   mv image-sets.zip data/
+   mv train_data.json data/
+   mv valid_data.json data/
+   mv test_data_unlabeled.json data/
+   cd data
+   unzip image-sets.zip #若unzip无法解压大文件，可用7z解压或将数据集先转为tar.gz格式
+   ```
+
+   
+
+3. 图片路径为./data/image-sets，标注路径为./data，如图所示![image-20230907165345041]("https://github.com/LHL3341/Adapter-BLIP/blob/main/README.assets/image-20230907165345041.png")
+
+4. ```bash
+   nohup python -u finetune.py --finetuned_checkpoint_path {预训练模型路径} > finetune.log 2>&1 & #开始训练
+   ```
+
+### Zero-Shot
+```python
+python zero-shot.py
+```
+
+
+   
