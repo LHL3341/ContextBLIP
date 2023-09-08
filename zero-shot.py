@@ -89,7 +89,8 @@ for img_dir, img_idx, text in tqdm.tqdm(valid):
     with torch.no_grad():
         output = model(image, text).squeeze()
         logits = model.pretrained_blip.itm_head(output[:,0,:])
-    pred = torch.argmax(logits).squeeze()
+        itm_score = torch.nn.functional.softmax(logits,dim=1)[:,1]
+    pred = torch.argmax(itm_score).squeeze()
     if img_idx == pred:
         correct += 1
     if 'open-images' in img_dir:
