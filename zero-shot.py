@@ -47,16 +47,17 @@ with open('analysis/manual_annotation_valid.yaml')as f:
 phenomenons = defaultdict(int)
 correct_cases = defaultdict(int)
 acc_each_case = defaultdict(float)
-whole_name = {'s':'Spatial Relations',
-              'col':'Colors',
-              'q':'Quantities',
-              'n':'Nuances',
-              'con':'Context',
+whole_name = {'s':'Spatial Relations(空间关系)',
+              'col':'Colors(颜色)',
+              'q':'Quantities(量词)',
+              'n':'Nuances(细微、偏僻部分)',
+              'con':'Context(上下文)',
               'img':'Unknown Type',
-              'neg':'Negation',
-              'v':'Visibility',
-              'cor':'Co-reference',
-              't':'Temporal',
+              'neg':'Negation(否定)',
+              'v':'Visibility(不可见、遮挡)',
+              'cor':'Co-reference(指代)',
+              't':'Temporal(时序)',
+                '': 'Others'
               }
 for key,value in annotations.items():
     for k, v in value.items():
@@ -117,9 +118,10 @@ for img_dir, img_idx, text in tqdm.tqdm(valid):
     if img_idx == pred:
         correct += 1
         if img_dir in annotations.keys():
-            phenomenon = annotations[img_dir][str(img_idx)]['annotation'].split(',')
-            for case in phenomenon:
-                correct_cases[case]+=1
+            if str(img_idx) in annotations[img_dir].keys():
+                phenomenon = annotations[img_dir][str(img_idx)]['annotation'].split(',')
+                for case in phenomenon:
+                    correct_cases[case]+=1
     if 'open-images' in img_dir:
         img_total += 1
         if img_idx == pred:
