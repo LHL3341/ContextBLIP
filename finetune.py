@@ -5,7 +5,7 @@ warnings.filterwarnings("ignore")
 import json
 import os
 import random
-import wandb
+
 import torch
 from torch import autograd
 import tqdm
@@ -33,18 +33,19 @@ from models.contextual import Adapter_BLIP
 
 random.seed(10)
 torch.manual_seed(10)
-wandb.init(project='blip-adapter-finetune', settings=wandb.Settings(start_method="thread"))
+
 
 #改变工作目录
 os.chdir(sys.path[0])
 
 
 class ContextualBLIP(torch.nn.Module):
-    def __init__(self, bert_config, args):
+    def __init__(self, bert_config, args,pretrain=True):
         super(ContextualBLIP, self).__init__()
         self.blip = Adapter_BLIP(med_config = 'configs/bert_config.json')
-        checkpoint = torch.load(args.finetuned_checkpoint_path)
-        self.blip.load_state_dict(checkpoint['model'],strict= False)
+        if pretrain:
+            checkpoint = torch.load(args.finetuned_checkpoint_path)
+            self.blip.load_state_dict(checkpoint['model'],strict= False)
 
         config = BertConfig.from_dict(bert_config)
         config.hidden_size = 768
@@ -84,7 +85,8 @@ class ContextualBLIP(torch.nn.Module):
         return itm_output
 
 if __name__ == "__main__":
-
+    import wandb
+    wandb.init(project='blip-adapter-finetune', settings=wandb.Settings(start_method="thread"))
     config = wandb.config
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--batchsize", type=int, default=36)
