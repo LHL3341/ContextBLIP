@@ -80,9 +80,8 @@ class ContextualBLIP(torch.nn.Module):
             x = layer_module(x, attention_mask)
         if self.add_input:
             x = x + features
-        itm_output = self.blip.pretrained_blip.itm_head(x).squeeze(0)  #[1,10,2]
-        #itm_score = torch.nn.functional.softmax(itm_output,dim=1)[:,1].unsqueeze(1)
-        return itm_output
+        preds = self.prediction_layer(x)
+        return preds
 
 if __name__ == "__main__":
     import wandb
@@ -165,7 +164,7 @@ if __name__ == "__main__":
             img_total = 0
             ranks = defaultdict(int)
             contextual_blip.eval()
-            for img_dir, img_idx, text in tqdm.tqdm(valid[:10]):
+            for img_dir, img_idx, text in tqdm.tqdm(valid):
                 text = [text]
                 img_idx = int(img_idx)
                 img_files = list((Path(img_dirs) / img_dir).glob("*.jpg"))
@@ -230,7 +229,7 @@ if __name__ == "__main__":
         correct = 0
         total = 0
         acc =0
-        for img_dir, img_idx, text in train[:50]:
+        for img_dir, img_idx, text in train:
             step += 1
             text = [text]
             img_idx = int(img_idx)
@@ -255,12 +254,11 @@ if __name__ == "__main__":
             if args.all_pos:
                 pos_mask = torch.ones((10, 1)).cuda()
             logits = contextual_blip(image, text, pos_mask)
-
-            itm_labels = torch.zeros([10],dtype=torch.long).to(device)
-            itm_labels[img_idx] = 1
-            loss = nn.CrossEntropyLoss()(logits,itm_labels)
-            itm_score = torch.nn.functional.softmax(logits,dim=1)[:,1]
-            pred = torch.argmax(itm_score).squeeze()
+            logits = logits.squeeze()
+            logits = logits.unsqueeze(dim=0)
+            ground_truth = torch.tensor([img_idx]).long().to(device)  # the index of the correct one
+            loss = loss_mix(logits, ground_truth)
+            pred = torch.argmax(logits).squeeze()
             if img_idx == pred:
                 correct += 1
             loss.backward()
