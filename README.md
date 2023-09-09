@@ -21,25 +21,30 @@ bash run.sh
 
 2. ```bash
    mkdir data
-   mv image-sets.zip data/
-   mv train_data.json data/
-   mv valid_data.json data/
-   mv test_data_unlabeled.json data/
-   cd data
+   mv image-sets.zip dataset/
+   mv train_data.json dataset/
+   mv valid_data.json dataset/
+   mv test_data_unlabeled.json dataset/
+   cd dataset
    unzip image-sets.zip #若unzip无法解压大文件，可用7z解压或将数据集先转为tar.gz格式
    ```
 
    
 
-3. 图片路径为./data/image-sets，标注路径为./data，如图所示<img src="https://github.com/LHL3341/Adapter-BLIP/blob/main/README.assets/image-20230907165345041.png" alt="image-20230905205919235" style="zoom:50%;" />
+3. 检查图片路径为./dataset/image-sets，标注路径为./dataset，如图所示<img src="https://github.com/LHL3341/Adapter-BLIP/blob/main/README.assets/image-20230907165345041.png" alt="image-20230905205919235" style="zoom:50%;" />
 
 4. ```bash
    nohup python -u finetune.py --finetuned_checkpoint_path {预训练模型路径} > finetune.log 2>&1 & #开始训练
    ```
 
 ### Zero-Shot
-```python
+```bash
 python zero-shot.py
+```
+
+### Analysis
+```bash
+python analysis/analysis_finetune.py #评估finetune模型
 ```
 
 

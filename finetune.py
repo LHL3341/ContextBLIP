@@ -83,196 +83,196 @@ class ContextualBLIP(torch.nn.Module):
         #itm_score = torch.nn.functional.softmax(itm_output,dim=1)[:,1].unsqueeze(1)
         return itm_output
 
+if __name__ == "__main__":
+
+    config = wandb.config
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--batchsize", type=int, default=36)
+    parser.add_argument("--lr_head", type=float, default=1e-4)
+    parser.add_argument("--lr", type=float, default=2e-6)
+    parser.add_argument("-m", "--model", type=str, default='ViT-B/16')
+    parser.add_argument("-a", "--activation", default='relu')
+    parser.add_argument("-s", "--logit_scale", default=1000)
+    parser.add_argument("--frozen_blip", action="store_true",default=False)
+    parser.add_argument("--finetuned_checkpoint_path", default='output/Pretrain/checkpoint_00.pth')
+    parser.add_argument("--add_input", action="store_true",default=True)
+    parser.add_argument("--positional", action="store_true",default=True)
+    parser.add_argument("--head_scheduler", default= 0.95, type=float)
+    parser.add_argument("--base_scheduler", default= 0.95, type=float)
+    parser.add_argument("--transformer_layers", default=2, type=int)
+    parser.add_argument("--all_pos", action="store_true",default=False)
+    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
+    parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
+    parser.add_argument('--imgs_path', type=str, default='./dataset/image-sets')
+    parser.add_argument("--job_id")
+
+    args = parser.parse_args()
+    assert args.activation in ['leaky-relu', 'relu', 'gelu']
+    wandb.config.update(args)
+
+    img_dirs = args.imgs_path
+    valid_data = json.load(open(args.valid_descr_path, 'r'))
+    train_data = json.load(open(args.train_descr_path, 'r'))
+    train = []
+    for img_dir, data in train_data.items():
+        for img_idx, text in data.items():
+            train.append((img_dir, img_idx, text))
+    valid = []
+    for img_dir, data in valid_data.items():
+        for img_idx, text in data.items():
+            valid.append((img_dir, img_idx, text))
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f'DEVICE USED: {device}')
 
 
-config = wandb.config
-parser = argparse.ArgumentParser()
-parser.add_argument("-b", "--batchsize", type=int, default=36)
-parser.add_argument("--lr_head", type=float, default=1e-4)
-parser.add_argument("--lr", type=float, default=2e-6)
-parser.add_argument("-m", "--model", type=str, default='ViT-B/16')
-parser.add_argument("-a", "--activation", default='relu')
-parser.add_argument("-s", "--logit_scale", default=1000)
-parser.add_argument("--frozen_blip", action="store_true",default=False)
-parser.add_argument("--finetuned_checkpoint_path", default='output/Pretrain/checkpoint_00.pth')
-parser.add_argument("--add_input", action="store_true",default=True)
-parser.add_argument("--positional", action="store_true",default=True)
-parser.add_argument("--head_scheduler", default= 0.95, type=float)
-parser.add_argument("--base_scheduler", default= 0.95, type=float)
-parser.add_argument("--transformer_layers", default=2, type=int)
-parser.add_argument("--all_pos", action="store_true",default=False)
-parser.add_argument('--epochs', type=int, default=20)
-parser.add_argument('--valid_descr_path', type=str, default='./data/valid_data.json')
-parser.add_argument('--train_descr_path', type=str, default='./data/train_data.json')
-parser.add_argument('--imgs_path', type=str, default='./data/image-sets')
-parser.add_argument("--job_id")
+    bert_config = json.load(open('vilbert-and-bert-config.json', 'r'))
+    contextual_blip = ContextualBLIP(bert_config, args).cuda()
+    #clip.model.convert_weights(contextual_blip)
+    #contextual_blip.blip.float()
 
-args = parser.parse_args()
-assert args.activation in ['leaky-relu', 'relu', 'gelu']
-wandb.config.update(args)
+    config = wandb.config
+    wandb.watch(contextual_blip)
+    # if device == "cpu":
+    #     contextual_blip.float()
+    # else:
+    #     clip.model.convert_weights(
+    #         contextual_blip)  # Actually this line is unnecessary since clip by default already on float16
 
-img_dirs = args.imgs_path
-valid_data = json.load(open(args.valid_descr_path, 'r'))
-train_data = json.load(open(args.train_descr_path, 'r'))
-train = []
-for img_dir, data in train_data.items():
-    for img_idx, text in data.items():
-        train.append((img_dir, img_idx, text))
-valid = []
-for img_dir, data in valid_data.items():
-    for img_idx, text in data.items():
-        valid.append((img_dir, img_idx, text))
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f'DEVICE USED: {device}')
+    MAX_EPOCHS = 20
+    loss_mix = nn.CrossEntropyLoss()
+    head_params = list(contextual_blip.transformer.parameters()) + list(contextual_blip.prediction_layer.parameters())
+    if args.positional:
+        head_params += list(contextual_blip.positional_emb.parameters())
+    optimizer = optim.Adam([{"params": contextual_blip.blip.parameters()}, {"params": head_params, "lr": config.lr_head}] , lr=config.lr, betas=(0.9, 0.98), eps=1e-6, weight_decay=0.2)
 
+    lambda1 = lambda epoch: args.base_scheduler ** epoch
+    lambda2 = lambda epoch: args.head_scheduler ** epoch
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=[lambda1, lambda2])
+    best_val = 0
 
-bert_config = json.load(open('vilbert-and-bert-config.json', 'r'))
-contextual_blip = ContextualBLIP(bert_config, args).cuda()
-#clip.model.convert_weights(contextual_blip)
-#contextual_blip.blip.float()
+    for i in range(args.epochs):
+        save_model = False
+        # EVALUATE
+        if i != 0:
+            correct = 0
+            total = 0
+            video_correct = 0
+            video_total = 0
+            img_correct = 0
+            img_total = 0
+            ranks = defaultdict(int)
+            contextual_blip.eval()
+            for img_dir, img_idx, text in tqdm.tqdm(valid[:10]):
+                text = [text]
+                img_idx = int(img_idx)
+                img_files = list((Path(img_dirs) / img_dir).glob("*.jpg"))
+                img_files = sorted(img_files, key=lambda x: int(str(x).split('/')[-1].split('.')[0][3:]))
+                images = [Image.open(photo_file).convert("RGB") for photo_file in img_files]
 
-config = wandb.config
-wandb.watch(contextual_blip)
-# if device == "cpu":
-#     contextual_blip.float()
-# else:
-#     clip.model.convert_weights(
-#         contextual_blip)  # Actually this line is unnecessary since clip by default already on float16
+                preprocess = transforms.Compose([
+                    transforms.Resize((224,224),interpolation=InterpolationMode.BICUBIC),
+                    transforms.ToTensor(),
+                    transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+                    ])  
+                images = [preprocess(image) for image in images]
+                image = torch.stack(images).to(device)
+                if "open-images" in str(img_dir):
+                    pos_mask = torch.zeros((10, 1)).cuda()
+                else:
+                    pos_mask = torch.ones((10, 1)).cuda()
+                with torch.no_grad():
+                    logits = contextual_blip(image, text, pos_mask).squeeze()
+                pred = torch.argmax(logits).squeeze()
+                if img_idx == pred:
+                    correct += 1
+                if 'open-images' in img_dir:
+                    img_total += 1
+                    if img_idx == pred:
+                        img_correct += 1
+                else:
+                    video_total += 1
+                    if img_idx == pred:
+                        video_correct += 1        
+                total += 1
+            print(len(valid))
+            print(ranks)
+            acc = round(correct / total, 4)
+            print(acc)
+            video_acc = round(video_correct / video_total, 4)
+            img_acc = round(img_correct / img_total, 4)
+            wandb.log({'acc': acc})
+            wandb.log({'video_acc': video_acc})
+            wandb.log({'img_acc': img_acc})
+            if acc > best_val:
+                best_val = acc
+                save_model = True
+                string = ''
+                for key, val in list(vars(args).items()):
+                    if 'path' not in key:
+                        string += f'_{val}'
+                string += f'_{best_val}_{i}'
+                if not os.path.exists('output/finetune/'):
+                    os.mkdir('output/finetune/')
+                torch.save({
+                    'epoch': i,
+                    'model_state_dict': contextual_blip.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                }, f"output/finetune/CONTEXTUAL_blip_best_{string.replace('/', '')}.pt")
+            print('------------------------------')
 
-MAX_EPOCHS = 20
-loss_mix = nn.CrossEntropyLoss()
-head_params = list(contextual_blip.transformer.parameters()) + list(contextual_blip.prediction_layer.parameters())
-if args.positional:
-    head_params += list(contextual_blip.positional_emb.parameters())
-optimizer = optim.Adam([{"params": contextual_blip.blip.parameters()}, {"params": head_params, "lr": config.lr_head}] , lr=config.lr, betas=(0.9, 0.98), eps=1e-6, weight_decay=0.2)
-
-lambda1 = lambda epoch: args.base_scheduler ** epoch
-lambda2 = lambda epoch: args.head_scheduler ** epoch
-scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=[lambda1, lambda2])
-best_val = 0
-
-for i in range(args.epochs):
-    save_model = False
-    # EVALUATE
-    if i != 0:
+        print(f'EPOCH: {i}')
+        step = 0
+        random.shuffle(train)
+        contextual_blip.train()
         correct = 0
         total = 0
-        video_correct = 0
-        video_total = 0
-        img_correct = 0
-        img_total = 0
-        ranks = defaultdict(int)
-        contextual_blip.eval()
-        for img_dir, img_idx, text in tqdm.tqdm(valid):
+        acc =0
+        for img_dir, img_idx, text in train[:50]:
+            step += 1
             text = [text]
             img_idx = int(img_idx)
             img_files = list((Path(img_dirs) / img_dir).glob("*.jpg"))
             img_files = sorted(img_files, key=lambda x: int(str(x).split('/')[-1].split('.')[0][3:]))
             images = [Image.open(photo_file).convert("RGB") for photo_file in img_files]
 
-            preprocess = transforms.Compose([
-                transforms.Resize((224,224),interpolation=InterpolationMode.BICUBIC),
+            preprocess = transforms.Compose([                        
+                transforms.RandomResizedCrop(224,scale=(0.2, 1.0),interpolation=InterpolationMode.BICUBIC),
+                transforms.RandomHorizontalFlip(),
+                RandomAugment(2,5,isPIL=True,augs=['Identity','AutoContrast','Brightness','Sharpness','Equalize',
+                                                'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
                 transforms.ToTensor(),
                 transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
-                ])  
+            ])
             images = [preprocess(image) for image in images]
             image = torch.stack(images).to(device)
             if "open-images" in str(img_dir):
                 pos_mask = torch.zeros((10, 1)).cuda()
             else:
                 pos_mask = torch.ones((10, 1)).cuda()
-            with torch.no_grad():
-                logits = contextual_blip(image, text, pos_mask).squeeze()
-            pred = torch.argmax(logits).squeeze()
+            if args.all_pos:
+                pos_mask = torch.ones((10, 1)).cuda()
+            logits = contextual_blip(image, text, pos_mask)
+
+            itm_labels = torch.zeros([10],dtype=torch.long).to(device)
+            itm_labels[img_idx] = 1
+            loss = nn.CrossEntropyLoss()(logits,itm_labels)
+            itm_score = torch.nn.functional.softmax(logits,dim=1)[:,1]
+            pred = torch.argmax(itm_score).squeeze()
             if img_idx == pred:
                 correct += 1
-            if 'open-images' in img_dir:
-                img_total += 1
-                if img_idx == pred:
-                    img_correct += 1
-            else:
-                video_total += 1
-                if img_idx == pred:
-                    video_correct += 1        
+            loss.backward()
             total += 1
-        print(len(valid))
-        print(ranks)
+            if step % config.batchsize == 0:
+                print(f'TOTAL LOSS: {loss}')
+                print('STEP: ' + str(step))
+                wandb.log({'loss': loss})
+                
+                #convert_models_to_fp32(contextual_blip)
+                optimizer.step()
+                #clip.model.convert_weights(contextual_blip)
+                #contextual_blip.blip.float()
+                optimizer.zero_grad()
+        wandb.log({'train_acc': acc})
         acc = round(correct / total, 4)
-        print(acc)
-        video_acc = round(video_correct / video_total, 4)
-        img_acc = round(img_correct / img_total, 4)
-        wandb.log({'acc': acc})
-        wandb.log({'video_acc': video_acc})
-        wandb.log({'img_acc': img_acc})
-        if acc > best_val:
-            best_val = acc
-            save_model = True
-            string = ''
-            for key, val in list(vars(args).items()):
-                if 'path' not in key:
-                    string += f'_{val}'
-            string += f'_{best_val}_{i}'
-            if not os.path.exists('output/finetune/'):
-                os.mkdir('output/finetune/')
-            torch.save({
-                'epoch': i,
-                'model_state_dict': contextual_blip.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-            }, f"output/finetune/CONTEXTUAL_blip_best_{string.replace('/', '')}.pt")
-        print('------------------------------')
-
-    print(f'EPOCH: {i}')
-    step = 0
-    random.shuffle(train)
-    contextual_blip.train()
-    correct = 0
-    total = 0
-    acc =0
-    for img_dir, img_idx, text in train:
-        step += 1
-        text = [text]
-        img_idx = int(img_idx)
-        img_files = list((Path(img_dirs) / img_dir).glob("*.jpg"))
-        img_files = sorted(img_files, key=lambda x: int(str(x).split('/')[-1].split('.')[0][3:]))
-        images = [Image.open(photo_file).convert("RGB") for photo_file in img_files]
-
-        preprocess = transforms.Compose([                        
-            transforms.RandomResizedCrop(224,scale=(0.2, 1.0),interpolation=InterpolationMode.BICUBIC),
-            transforms.RandomHorizontalFlip(),
-            RandomAugment(2,5,isPIL=True,augs=['Identity','AutoContrast','Brightness','Sharpness','Equalize',
-                                              'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
-            transforms.ToTensor(),
-            transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
-        ])
-        images = [preprocess(image) for image in images]
-        image = torch.stack(images).to(device)
-        if "open-images" in str(img_dir):
-            pos_mask = torch.zeros((10, 1)).cuda()
-        else:
-            pos_mask = torch.ones((10, 1)).cuda()
-        if args.all_pos:
-            pos_mask = torch.ones((10, 1)).cuda()
-        logits = contextual_blip(image, text, pos_mask)
-
-        itm_labels = torch.zeros([10],dtype=torch.long).to(device)
-        itm_labels[img_idx] = 1
-        loss = nn.CrossEntropyLoss()(logits,itm_labels)
-        itm_score = torch.nn.functional.softmax(logits,dim=1)[:,1]
-        pred = torch.argmax(itm_score).squeeze()
-        if img_idx == pred:
-            correct += 1
-        loss.backward()
-        total += 1
-        if step % config.batchsize == 0:
-            print(f'TOTAL LOSS: {loss}')
-            print('STEP: ' + str(step))
-            wandb.log({'loss': loss})
-            
-            #convert_models_to_fp32(contextual_blip)
-            optimizer.step()
-            #clip.model.convert_weights(contextual_blip)
-            #contextual_blip.blip.float()
-            optimizer.zero_grad()
-    wandb.log({'train_acc': acc})
-    acc = round(correct / total, 4)
-    scheduler.step()
+        scheduler.step()
