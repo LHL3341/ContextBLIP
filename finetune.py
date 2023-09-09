@@ -273,6 +273,6 @@ if __name__ == "__main__":
                 #clip.model.convert_weights(contextual_blip)
                 #contextual_blip.blip.float()
                 optimizer.zero_grad()
-        wandb.log({'train_acc': acc})
         acc = round(correct / total, 4)
+        wandb.log({'train_acc': acc})
         scheduler.step()
