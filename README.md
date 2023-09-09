@@ -39,12 +39,12 @@ bash run.sh
 
 ### Zero-Shot
 ```bash
-python zero-shot.py
+python zero-shot.py --finetuned_checkpoint_path {预训练模型路径}
 ```
 
 ### Analysis
 ```bash
-python analysis/analysis_finetune.py #评估finetune模型
+python analysis/analysis_finetune.py --finetuned_checkpoint_path {预训练模型路径} #评估finetune模型
 ```
 
 
