@@ -114,9 +114,7 @@ for img_dir, img_idx, text in tqdm.tqdm(valid):
         pos_mask = torch.ones((10, 1)).cuda()
     with torch.no_grad():
         logits = model(image, text,pos_mask).squeeze()
-        #logits = model.blip.pretrained_blip.itm_head(output[:,0,:])
-        itm_score = torch.nn.functional.softmax(logits,dim=1)[:,1]
-    pred = torch.argmax(itm_score).squeeze()
+    pred = torch.argmax(logits).squeeze()
     if img_idx == pred:
         correct += 1
         if img_dir in annotations.keys():
