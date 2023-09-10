@@ -29,7 +29,7 @@ def mask_text_(input_ids):
     return mask_ids, mask_map
 
 
-def mask_image(image,avg_attention_map,num_patches=196, mask_rate=0.5):
+def mask_image(image,avg_attention_map,mask_rate,num_patches=196):
     patch_h = 16
     patch_w = 16
     b,c,h,w = image.shape

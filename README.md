@@ -47,5 +47,10 @@ python zero-shot.py --finetuned_checkpoint_path {预训练模型路径}
 python analysis/analysis_finetune.py --finetuned_checkpoint_path {预训练模型路径} #评估finetune模型
 ```
 
-
-   
+### Ablation Study
+消融实验中，通过调整命令行参数调整图像掩码率和文本prompt长度
+```bash
+#img_mask_rate={图片掩码率}
+#prompt_length={文本prompt长度}
+nohup python -u -m torch.distributed.run --nproc_per_node 4 main.py --mask_rate ${img_mask_rate} --prompt_length ${prompt_length} --output_dir 'output/Pretrain/'$img_mask_rate'_'$prompt_length'' > pretrain.log 2>&1 &
+```   

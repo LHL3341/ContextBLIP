@@ -109,7 +109,7 @@ def main(args, config):
 
     #### Model #### 
     print("Creating model")
-    model = blip_pretrain(image_size=config['image_size'], vit=config['vit'], vit_grad_ckpt=config['vit_grad_ckpt'], 
+    model = blip_pretrain(mask_rate=args.mask_rate,prompt_length=args.prompt_length,image_size=config['image_size'], vit=config['vit'], vit_grad_ckpt=config['vit_grad_ckpt'], 
                             vit_ckpt_layer=config['vit_ckpt_layer'], queue_size=config['queue_size'])
 
     model = model.to(device)   
@@ -165,6 +165,8 @@ if __name__ == '__main__':
     parser.add_argument('--config', default='configs/pretrain.yaml')
     parser.add_argument('--output_dir', default='./output/Pretrain')  
     parser.add_argument('--checkpoint', default='')    
+    parser.add_argument('--mask_rate', type=float,default=0.5)    
+    parser.add_argument('--prompt_length', type=int,default=5)   
     parser.add_argument('--evaluate', action='store_true',default=False)    
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=42, type=int)

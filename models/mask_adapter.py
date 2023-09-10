@@ -34,6 +34,8 @@ class Adapter(nn.Module):
     
 class Adapter_BLIP(nn.Module):
     def __init__(self,                 
+                 mask_rate,
+                 prompt_length,
                  med_config = 'configs/bert_config.json',  
                  blip_path = 'model_base_14M.pth',
                  image_size = 224,
@@ -51,40 +53,47 @@ class Adapter_BLIP(nn.Module):
             vit (str): model size of vision transformer
         """               
         super().__init__()
+        self.mask_rate = mask_rate
+        self.prompt_len = prompt_length
+        self.mim = True if self.mask_rate>0 else False
+        self.mlm = True if self.prompt_len>0 else False
+
         self.pretrained_blip = BLIP_Base(med_config)
         self.pretrained_blip,msg=load_checkpoint(self.pretrained_blip,blip_path)
 
         vision_width = self.pretrained_blip.visual_encoder.embed_dim
         text_width = vision_width
         # create the decoder
-        decoder_config = BertConfig.from_json_file(med_config)
-        decoder_config.encoder_width = vision_width        
-        decoder_config.num_hidden_layers = 4
-        decoder_config.num_attention_heads = 8
+
         #self.text_decoder.resize_token_embeddings(len(self.tokenizer)) 
         #tie_encoder_decoder_weights(self.text_encoder,self.text_decoder,'','/attention')
+        if self.mim:
+            decoder_config = BertConfig.from_json_file(med_config)
+            decoder_config.encoder_width = vision_width        
+            decoder_config.num_hidden_layers = 4
+            decoder_config.num_attention_heads = 8
+            self.visual_decoder = BertModel(config=decoder_config, add_pooling_layer=False)
+            self.decoder_pos_embed = nn.Embedding(196, vision_width)
+            self.recon_head = nn.Linear(vision_width,768)
+            self.mask_embed = nn.Parameter(torch.randn(vision_width))
+            self.visual_decoder.embeddings.word_embeddings=None
+            self.visual_decoder.embeddings.position_embeddings=None
+            self.visual_decoder.embeddings.LayerNorm=None
+            self.text_adapter = Adapter(text_width)
 
-        self.visual_decoder = BertModel(config=decoder_config, add_pooling_layer=False)
-        self.decoder_pos_embed = nn.Embedding(196, vision_width)
-        self.recon_head = nn.Linear(vision_width,768)
-        self.pred_head = nn.Linear(text_width,len(self.pretrained_blip.tokenizer)-2)
-        self.mask_embed = nn.Parameter(torch.randn(vision_width))
-        prompt_length = 5
-        self.prompt = nn.Parameter(torch.randn(17,prompt_length,text_width))
-
-        self.visual_decoder.embeddings.word_embeddings=None
-        self.visual_decoder.embeddings.position_embeddings=None
-        self.visual_decoder.embeddings.LayerNorm=None
+        if self.mlm:
+            self.prompt = nn.Parameter(torch.randn(17,prompt_length,text_width))
+            self.pred_head = nn.Linear(text_width,len(self.pretrained_blip.tokenizer)-2)
+            self.text_decoder = self.pretrained_blip.text_encoder
 
         self.vision_adapter = Adapter(vision_width)
-        self.text_adapter = Adapter(text_width)
-        self.text_decoder = self.pretrained_blip.text_encoder
 
         for param in self.pretrained_blip.parameters():
             param.requires_grad = False
         
-    def forward(self, image, caption, alpha):
+    def forward(self, image, caption,alpha=None):
         #t1= time()
+        B = image.shape[0]
         with torch.no_grad():
         
             image_embeds = self.pretrained_blip.visual_encoder(image) # [b,197,768]
@@ -162,28 +171,31 @@ class Adapter_BLIP(nn.Module):
         attention_map = torch.stack(output_pos['cross_attentions'],dim=1)
         avg_attention_map = attention_map.mean(dim=1).mean(dim=1).detach()
 
+        loss_mim = torch.zeros([])
+        loss_mlm = torch.zeros([])
+        
         ##================= MLM ========================##     
         #t2= time()
-        masked_ids, concept_type = mask_text(caption,self.pretrained_blip.tokenizer)
-        #masked_ids, concept_type = text.input_ids, [0,0]
-        #t3= time()
-        B = masked_ids.shape[0]
-        prompt_length = self.prompt.shape[1]
-        #decoder_input_ids = text.input_ids.clone()      
-        #decoder_input_ids[:,0] = self.tokenizer.bos_token_id
-        #decoder_targets = decoder_input_ids.masked_fill(decoder_input_ids == self.tokenizer.pad_token_id, -100) 
-        masked_ids = masked_ids.to(image.device)
-        prompt = torch.stack([self.prompt[i] for i in concept_type])
-        decoder_output = self.text_decoder(masked_ids, 
-                                           attention_mask = torch.ones([B,prompt_length+30]).to(image.device), 
-                                           encoder_hidden_states = image_embeds,
-                                           encoder_attention_mask = image_atts,
-                                           output_attentions = True,
-                                           return_dict = True,
-                                           prompt = prompt
-                                          )
-        predict = self.pred_head(decoder_output.last_hidden_state[:,prompt_length:][masked_ids==103])
-        loss_mlm = nn.CrossEntropyLoss()(predict,text.input_ids[masked_ids==103])
+        if self.mlm:
+            masked_ids, concept_type = mask_text(caption,self.pretrained_blip.tokenizer)
+            #masked_ids, concept_type = text.input_ids, [0,0]
+            #t3= time()
+            prompt_length = self.prompt.shape[1]
+            #decoder_input_ids = text.input_ids.clone()      
+            #decoder_input_ids[:,0] = self.tokenizer.bos_token_id
+            #decoder_targets = decoder_input_ids.masked_fill(decoder_input_ids == self.tokenizer.pad_token_id, -100) 
+            masked_ids = masked_ids.to(image.device)
+            prompt = torch.stack([self.prompt[i] for i in concept_type])
+            decoder_output = self.text_decoder(masked_ids, 
+                                            attention_mask = torch.ones([B,prompt_length+30]).to(image.device), 
+                                            encoder_hidden_states = image_embeds,
+                                            encoder_attention_mask = image_atts,
+                                            output_attentions = True,
+                                            return_dict = True,
+                                            prompt = prompt
+                                            )
+            predict = self.pred_head(decoder_output.last_hidden_state[:,prompt_length:][masked_ids==103])
+            loss_mlm = nn.CrossEntropyLoss()(predict,text.input_ids[masked_ids==103])
 
         #attention_map_mask = torch.stack(decoder_output['cross_attentions'],dim=1)
         #avg_attention_map_mask = attention_map_mask.mean(dim=1).mean(dim=1).detach()
@@ -193,47 +205,47 @@ class Adapter_BLIP(nn.Module):
         #loss_attn = torch.zeros([])#nn.MSELoss(reduction='sum')(mlm_attn, itm_attn)
 
         ##================= MIM ========================##   
-        
-        with torch.no_grad():
-            image_patches,masked_idx,unmasked_idx = mask_image(image,avg_attention_map[...,1:])
+        if self.mim:
+            with torch.no_grad():
+                image_patches,masked_idx,unmasked_idx = mask_image(image,avg_attention_map[...,1:],self.mask_rate)
+                
+                unmasked_patches = torch.stack([image_patches[i,idx] for i,idx in enumerate(unmasked_idx)],dim=0)
+
+                self.pretrained_blip.visual_encoder.patch_embed.img_size = (16,16)
+                unmask_tokens = self.pretrained_blip.visual_encoder.patch_embed(unmasked_patches.view(-1,3,16,16)).view(B,-1,768)
+                self.pretrained_blip.visual_encoder.patch_embed.img_size = (224,224)
+                cls_tokens = self.pretrained_blip.visual_encoder.cls_token.expand(B, -1, -1)
+                unmask_tokens = torch.cat((cls_tokens, unmask_tokens), dim=1)
+                pos_embed = torch.cat([self.pretrained_blip.visual_encoder.pos_embed[:,0:1,:].repeat(B,1,1),
+                                    self.pretrained_blip.visual_encoder.pos_embed[:,unmasked_idx+1,:].squeeze(0)],dim=1)
+                unmask_tokens = unmask_tokens + pos_embed
+                unmask_tokens = self.pretrained_blip.visual_encoder.pos_drop(unmask_tokens)
+                
+                for i,blk in enumerate(self.pretrained_blip.visual_encoder.blocks):
+                    unmask_tokens = blk(unmask_tokens)
+                unmask_tokens = self.pretrained_blip.visual_encoder.norm(unmask_tokens)
             
-            unmasked_patches = torch.stack([image_patches[i,idx] for i,idx in enumerate(unmasked_idx)],dim=0)
+            unmask_tokens = unmask_tokens + self.vision_adapter(unmask_tokens)
+            text_embeds = output_pos.last_hidden_state + self.text_adapter(output_pos.last_hidden_state)
 
-            self.pretrained_blip.visual_encoder.patch_embed.img_size = (16,16)
-            unmask_tokens = self.pretrained_blip.visual_encoder.patch_embed(unmasked_patches.view(-1,3,16,16)).view(B,-1,768)
-            self.pretrained_blip.visual_encoder.patch_embed.img_size = (224,224)
-            cls_tokens = self.pretrained_blip.visual_encoder.cls_token.expand(B, -1, -1)
-            unmask_tokens = torch.cat((cls_tokens, unmask_tokens), dim=1)
-            pos_embed = torch.cat([self.pretrained_blip.visual_encoder.pos_embed[:,0:1,:].repeat(B,1,1),
-                                self.pretrained_blip.visual_encoder.pos_embed[:,unmasked_idx+1,:].squeeze(0)],dim=1)
-            unmask_tokens = unmask_tokens + pos_embed
-            unmask_tokens = self.pretrained_blip.visual_encoder.pos_drop(unmask_tokens)
-            
-            for i,blk in enumerate(self.pretrained_blip.visual_encoder.blocks):
-                unmask_tokens = blk(unmask_tokens)
-            unmask_tokens = self.pretrained_blip.visual_encoder.norm(unmask_tokens)
-        
-        unmask_tokens = unmask_tokens + self.vision_adapter(unmask_tokens)
-        text_embeds = output_pos.last_hidden_state + self.text_adapter(output_pos.last_hidden_state)
+            masked_tokens = self.mask_embed[None, None, :].repeat(B, masked_idx.shape[1], 1)
+            masked_tokens += self.decoder_pos_embed(masked_idx)
+            concat_tokens = torch.cat([masked_tokens, unmask_tokens], dim=1)
 
-        masked_tokens = self.mask_embed[None, None, :].repeat(B, masked_idx.shape[1], 1)
-        masked_tokens += self.decoder_pos_embed(masked_idx)
-        concat_tokens = torch.cat([masked_tokens, unmask_tokens], dim=1)
+            ids = torch.cat([masked_idx,torch.zeros(B,1).cuda()-1,unmasked_idx],dim=1)
+            sorted_id = ids.argsort()
+            dec_input_tokens = torch.stack([concat_tokens[i,id] for i,id in enumerate(sorted_id)],dim=0)
 
-        ids = torch.cat([masked_idx,torch.zeros(B,1).cuda()-1,unmasked_idx],dim=1)
-        sorted_id = ids.argsort()
-        dec_input_tokens = torch.stack([concat_tokens[i,id] for i,id in enumerate(sorted_id)],dim=0)
-
-        recon_image_embeds = self.visual_decoder(encoder_embeds=dec_input_tokens,
-                                                 attention_mask = image_atts,
-                                                 encoder_hidden_states = text_embeds,
-                                                 encoder_attention_mask = text.attention_mask,
-                                                 return_dict = True,  
-                                                )
-        recon_image = self.recon_head(torch.stack([recon_image_embeds.last_hidden_state[i,idx+1] 
-                                                   for i,idx in enumerate(masked_idx)],dim=0))
-        masked_patches = torch.stack([image_patches[i,idx] for i,idx in enumerate(masked_idx)],dim=0)
-        loss_mim = nn.MSELoss()(recon_image,masked_patches)
+            recon_image_embeds = self.visual_decoder(encoder_embeds=dec_input_tokens,
+                                                    attention_mask = image_atts,
+                                                    encoder_hidden_states = text_embeds,
+                                                    encoder_attention_mask = text.attention_mask,
+                                                    return_dict = True,  
+                                                    )
+            recon_image = self.recon_head(torch.stack([recon_image_embeds.last_hidden_state[i,idx+1] 
+                                                    for i,idx in enumerate(masked_idx)],dim=0))
+            masked_patches = torch.stack([image_patches[i,idx] for i,idx in enumerate(masked_idx)],dim=0)
+            loss_mim = nn.MSELoss()(recon_image,masked_patches)
         #t4= time()
         #print(t4-t1,t3-t2)
         return torch.zeros([]), loss_itm, loss_mlm, loss_mim
@@ -266,7 +278,8 @@ class Adapter_BLIP(nn.Module):
                                             output_attentions = True,
                                         return_dict = True,
                                         ) # [b,30,768] 
-            return output_pos
+            logits = self.pretrained_blip.itm_head(output_pos)
+            return logits
 
 
     @torch.no_grad()    
