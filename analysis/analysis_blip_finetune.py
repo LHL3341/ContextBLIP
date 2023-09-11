@@ -17,40 +17,27 @@ import argparse
 from torchvision.transforms.functional import InterpolationMode
 from models.contextual import Adapter_BLIP
 from extras_ import convert_sents_to_features, BertLayer
-from finetune import ContextualBLIP
+from blip_finetune import ContextualBLIP
 from volta_src.config import BertConfig
 import yaml
 import torch.nn as nn
 
-class ContextualBLIP(torch.nn.Module):
-    def __init__(self, bert_config, args):
-        super(ContextualBLIP, self).__init__()
-        self.blip = Adapter_BLIP(med_config = 'configs/bert_config.json')
-        checkpoint = torch.load(args.finetuned_checkpoint_path)
-        self.blip.load_state_dict(checkpoint['model'],strict= False)
-
-        config = BertConfig.from_dict(bert_config)
-        config.hidden_size = 768
-        config.num_attention_heads = 8
-        self.transformer = nn.ModuleList([BertLayer(config) for _ in range(args.transformer_layers)])
-        self.transformer.cuda()
-        self.prediction_layer = nn.Linear(config.hidden_size, 1).cuda()
-        self.batch_size = 1
-        self.logit_scale = float(args.logit_scale)
-        self.frozen_blip = args.frozen_blip
-        self.add_input = args.add_input
-        self.positional = args.positional
-        if args.positional:
-            self.positional_emb = torch.nn.Embedding(10, config.hidden_size).cuda()
 random.seed(10)
 torch.manual_seed(10)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--finetuned_checkpoint_path", default='output/Pretrain/checkpoint_00.pth')
+parser.add_argument("--finetuned_checkpoint_path", default='checkpoints/1/blip_finetuned_model.pt')
 
 parser.add_argument('--valid_descr_path', type=str, default='dataset/valid_data.json')
 parser.add_argument('--train_descr_path', type=str, default='dataset/train_data.json')
 parser.add_argument('--imgs_path', type=str, default='dataset/image-sets')
+parser.add_argument("--add_input", action="store_true",default=True)
+parser.add_argument("--positional", action="store_true",default=True)
+parser.add_argument("--transformer_layers", default=2, type=int)
+parser.add_argument("--all_pos", action="store_true",default=False)
+parser.add_argument("-a", "--activation", default='relu')
+parser.add_argument("-s", "--logit_scale", default=1000)
+parser.add_argument("--frozen_blip", action="store_true",default=True)
 
 args = parser.parse_args()
 with open('analysis/manual_annotation_valid.yaml')as f:
@@ -94,9 +81,9 @@ print(f'DEVICE USED: {device}')
 
 
 bert_config = json.load(open('vilbert-and-bert-config.json', 'r'))
-model = ContextualBLIP(bert_config, args).cuda()
+model = ContextualBLIP(bert_config, args,pretrain=False).cuda()
 checkpoint = torch.load(args.finetuned_checkpoint_path)
-model.load_state_dict(checkpoint['model'],strict= False)
+model.load_state_dict(checkpoint['model_state_dict'],strict= False)
 
 
 correct = 0
@@ -121,11 +108,13 @@ for img_dir, img_idx, text in tqdm.tqdm(valid):
         ])  
     images = [preprocess(image) for image in images]
     image = torch.stack(images).to(device)
+    if "open-images" in str(img_dir):
+        pos_mask = torch.zeros((10, 1)).cuda()
+    else:
+        pos_mask = torch.ones((10, 1)).cuda()
     with torch.no_grad():
-        output = model(image, text).squeeze()
-        logits = model.blip.itm_head(output[:,0,:])
-        itm_score = torch.nn.functional.softmax(logits,dim=1)[:,1]
-    pred = torch.argmax(itm_score).squeeze()
+        logits = model(image, text,pos_mask).squeeze()
+    pred = torch.argmax(logits).squeeze()
     if img_idx == pred:
         correct += 1
         if img_dir in annotations.keys():

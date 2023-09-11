@@ -19,7 +19,7 @@ class pretrain_dataset(Dataset):
             print('loading '+f)
             ann = json.load(open(f,'r'))
             self.ann_pretrain += ann
-        #self.ann_pretrain = self.ann_pretrain[:numsample]
+        #self.ann_pretrain = self.ann_pretrain[:100]
         
         self.laion_path = laion_path
         if self.laion_path:

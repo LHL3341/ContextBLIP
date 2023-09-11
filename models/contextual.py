@@ -51,15 +51,10 @@ class Adapter_BLIP(nn.Module):
         super().__init__()
         self.pretrained_blip = BLIP_Base(med_config)
         vision_width = self.pretrained_blip.visual_encoder.embed_dim
-        text_width = vision_width
-
-        prompt_length = 5
-        self.prompt = nn.Parameter(torch.randn(17,prompt_length,text_width))
 
         self.vision_adapter = Adapter(vision_width)
-        self.text_adapter = Adapter(text_width)
         
-    def forward(self, image, caption):
+    def forward(self, image, caption,output_attentions = False):
     
         image_embeds = self.pretrained_blip.visual_encoder(image) # [b,197,768]
         image_atts = torch.ones(image_embeds.size()[:-1],dtype=torch.long).to(image.device)            
@@ -81,7 +76,11 @@ class Adapter_BLIP(nn.Module):
                                        encoder_attention_mask = image_atts,
                                         output_attentions = True,
                                        return_dict = True,
-                                      ) # [b,30,768]           
+                                      ) # [b,30,768]      
+        if output_pos:
+            attention_map = torch.stack(output_pos['cross_attentions'],dim=1)
+            avg_attention_map = attention_map.mean(dim=1).mean(dim=1).detach()
+            return output_pos.last_hidden_state, avg_attention_map    
         return output_pos.last_hidden_state
     
     def inference(self,image,caption):
