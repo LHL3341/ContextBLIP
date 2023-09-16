@@ -7,7 +7,7 @@
 '''
 import argparse
 import os
-#os.environ['CUDA_VISIBLE_DEVICES']='1'
+#os.environ['CUDA_VISIBLE_DEVICES']="4,5,6,7"
 #os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 import ruamel.yaml as yaml
 import numpy as np
@@ -25,7 +25,7 @@ import torch.distributed as dist
 from torch.utils.data import DataLoader
 
 #from models.mask_pretrain import blip_pretrain
-from models.mask_adapter import blip_pretrain
+from models.multiscale_adapter import blip_pretrain
 import utils
 from utils import warmup_lr_schedule, step_lr_schedule
 from data import create_dataset, create_sampler, create_loader
