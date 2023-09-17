@@ -177,7 +177,7 @@ class VisionTransformer(nn.Module):
     def no_weight_decay(self):
         return {'pos_embed', 'cls_token'}
 
-    def forward(self, x, register_blk=-1):
+    def forward(self, x, output_hidden_states=False,register_blk=-1):
         B = x.shape[0]
         x = self.patch_embed(x)
 
@@ -186,11 +186,13 @@ class VisionTransformer(nn.Module):
   
         x = x + self.pos_embed[:,:x.size(1),:]
         x = self.pos_drop(x)
-
+        hidden_states = []
         for i,blk in enumerate(self.blocks):
             x = blk(x, register_blk==i)
+            hidden_states.append(self.norm(x))
         x = self.norm(x)
-        
+        if output_hidden_states:
+            return x,hidden_states
         return x
 
     @torch.jit.ignore()

@@ -54,3 +54,14 @@ python analysis/analysis_finetune.py --finetuned_checkpoint_path {预训练模�
 #prompt_length={文本prompt长度}
 nohup python -u -m torch.distributed.run --nproc_per_node 4 main.py --mask_rate ${img_mask_rate} --prompt_length ${prompt_length} --output_dir 'output/Pretrain/'$img_mask_rate'_'$prompt_length'' > pretrain.log 2>&1 &
 ```   
+### COCO-5k
+修改./configs/retrieval_coco.yaml中的pretrained字段为待测试检查点的路径
+```bash
+python train_retrieval.py --config configs/retrieval_coco.yaml --output_dir 'output/Retrieval_coco'
+```
+### Flickr30k-1k
+将flickr30k-images文件夹置于./pretrain_data下
+修改./configs/retrieval_flickr.yaml中的pretrained字段为待测试检查点的路径
+```bash
+python train_retrieval.py --config configs/retrieval_flickr.yaml --output_dir 'output/Retrieval_flickr'
+```
