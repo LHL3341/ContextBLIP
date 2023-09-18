@@ -37,9 +37,9 @@ torch.manual_seed(10)
 parser = argparse.ArgumentParser()
 parser.add_argument("--finetuned_checkpoint_path", default='output/Pretrain/checkpoint_00.pth')
 
-parser.add_argument('--valid_descr_path', type=str, default='./data/valid_data.json')
-parser.add_argument('--train_descr_path', type=str, default='./data/train_data.json')
-parser.add_argument('--imgs_path', type=str, default='./data/image-sets')
+parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
+parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
+parser.add_argument('--imgs_path', type=str, default='./dataset/image-sets')
 
 args = parser.parse_args()
 with open('analysis/manual_annotation_valid.yaml')as f:
