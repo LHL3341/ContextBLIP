@@ -20,6 +20,22 @@ class Adapter(nn.Module):
     def forward(self, x):
         x = self.fc(x)
         return x
+    
+class MultiLevelAdapter(nn.Module):
+    def __init__(self, c_in, reduction=4):
+        super(MultiLevelAdapter, self).__init__()
+        self.adapt_layer = [3,6,9,12]
+        self.down = nn.ModuleList([DownSampler(c_in) for i in self.adapt_layer])
+        self.up = UpSampler(c_in)
+
+    def forward(self,x, hidden):
+        latent_features = []
+        for i,layer in enumerate(self.adapt_layer):
+            latent = self.down[i](hidden[layer-1])
+            latent_features.append(latent)
+        latent_features = torch.cat(latent_features,dim=2)
+        x = x + self.up(latent_features)
+        return x
 
 class DownSampler(nn.Module):
     def __init__(self, c_in, reduction=4):
@@ -45,6 +61,7 @@ class UpSampler(nn.Module):
         x = self.fc(x)
         return x
     
+    
 class BLIP_Retrieval(nn.Module):
     def __init__(self,                 
                  med_config = 'configs/bert_config.json',  
@@ -68,9 +85,7 @@ class BLIP_Retrieval(nn.Module):
         self.pretrained_blip = BLIP_Base(med_config)
         vision_width = self.pretrained_blip.visual_encoder.embed_dim
 
-        self.adapt_layer = [3,6,9,12]
-        self.vision_adapter = ([DownSampler(vision_width) for i in self.adapt_layer],UpSampler(vision_width))
-        
+        self.vision_adapter = MultiLevelAdapter(vision_width)
         
     def forward(self, image, caption, alpha, idx):
         with torch.no_grad():

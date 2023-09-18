@@ -105,13 +105,7 @@ def evaluation(model, data_loader, device, config):
         image_embed = model.pretrained_blip.vision_proj(image_feat[:,0,:])            
         image_embed = F.normalize(image_embed,dim=-1)
         ##############################################################
-        image_feat = image_feat + model.vision_adapter(image_feat)
-        latent_features = []
-        for i,layer in enumerate(model.adapt_layer):
-            latent = model.vision_adapter[0][i].to(image.device)(hidden[layer-1])
-            latent_features.append(latent)
-        latent_features = torch.cat(latent_features,dim=2)
-        image_feat = image_feat + model.vision_adapter[1].to(image.device)(latent_features)
+        image_feat = model.vision_adapter(image_feat,hidden)
         ##############################################################
         image_feats.append(image_feat.cpu())
         image_embeds.append(image_embed)
@@ -335,8 +329,8 @@ def main(args, config):
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()     
-    parser.add_argument('--config', default='./configs/retrieval_coco.yaml')
-    parser.add_argument('--output_dir', default='output/Retrieval_coco')        
+    parser.add_argument('--config', default='./configs/retrieval_flickr.yaml')
+    parser.add_argument('--output_dir', default='output/Retrieval_flickr')        
     parser.add_argument('--evaluate', default=True)
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=42, type=int)

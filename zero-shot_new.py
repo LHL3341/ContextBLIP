@@ -35,7 +35,7 @@ random.seed(10)
 torch.manual_seed(10)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--finetuned_checkpoint_path", default='output/Pretrain/checkpoint_00.pth')
+parser.add_argument("--finetuned_checkpoint_path", default='output/Pretrain_2/0.5_0/checkpoint_02.pth')
 
 parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
 parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')

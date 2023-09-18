@@ -31,6 +31,22 @@ class Adapter(nn.Module):
     def forward(self, x):
         x = self.fc(x)
         return x
+    
+class MultiLevelAdapter(nn.Module):
+    def __init__(self, c_in, reduction=4):
+        super(MultiLevelAdapter, self).__init__()
+        self.adapt_layer = [3,6,9,12]
+        self.down = nn.ModuleList([DownSampler(c_in) for i in self.adapt_layer])
+        self.up = UpSampler(c_in)
+
+    def forward(self,x, hidden):
+        latent_features = []
+        for i,layer in enumerate(self.adapt_layer):
+            latent = self.down[i](hidden[layer-1])
+            latent_features.append(latent)
+        latent_features = torch.cat(latent_features,dim=2)
+        x = x + self.up(latent_features)
+        return x
 
 class DownSampler(nn.Module):
     def __init__(self, c_in, reduction=4):
@@ -110,9 +126,7 @@ class Adapter_BLIP(nn.Module):
             self.pred_head = nn.Linear(text_width,len(self.pretrained_blip.tokenizer)-2)
             self.text_decoder = self.pretrained_blip.text_encoder
 
-        self.adapt_layer = [3,6,9,12]
-        self.vision_adapter = ([DownSampler(vision_width) for i in self.adapt_layer],UpSampler(vision_width))
-
+        self.vision_adapter = MultiLevelAdapter(vision_width)
         for param in self.pretrained_blip.parameters():
             param.requires_grad = False
         
@@ -130,13 +144,8 @@ class Adapter_BLIP(nn.Module):
             text_output = self.pretrained_blip.text_encoder(text.input_ids, attention_mask = text.attention_mask,                      
                                             return_dict = True, mode = 'text')  # [b,30,768]      
             text_feat = F.normalize(self.pretrained_blip.text_proj(text_output.last_hidden_state[:,0,:]),dim=-1)# [b,256]                 
-        latent_features = []
-        for i,layer in enumerate(self.adapt_layer):
-            latent = self.vision_adapter[0][i].to(image.device)(hidden[layer-1])
-            latent_features.append(latent)
-        latent_features = torch.cat(latent_features,dim=2)
-        image_embeds = image_embeds + self.vision_adapter[1].to(image.device)(latent_features)
 
+        image_embeds = self.vision_adapter(image_embeds, hidden)
         ###============== Image-text Matching ===================###
         encoder_input_ids = text.input_ids.clone()
         encoder_input_ids[:,0] = self.pretrained_blip.tokenizer.enc_token_id
@@ -256,12 +265,7 @@ class Adapter_BLIP(nn.Module):
                     hidden_states.append(self.pretrained_blip.visual_encoder.norm(unmask_tokens))
                 unmask_tokens = self.pretrained_blip.visual_encoder.norm(unmask_tokens)
             
-            latent_features1 = []
-            for i,layer in enumerate(self.adapt_layer):
-                latent = self.vision_adapter[0][i].to(image.device)(hidden_states[layer-1])
-                latent_features1.append(latent)
-            latent_features1 = torch.cat(latent_features1,dim=2)
-            unmask_tokens = unmask_tokens + self.vision_adapter[1].to(image.device)(latent_features1)
+            unmask_tokens = self.vision_adapter(unmask_tokens,hidden_states)
 
             text_embeds = output_pos.last_hidden_state + self.text_adapter(output_pos.last_hidden_state)
 
@@ -365,7 +369,7 @@ def concat_all_gather(tensor):
     *** Warning ***: torch.distributed.all_gather has no gradient.
     """
 
-    #return tensor
+    #sreturn tensor
     
     tensors_gather = [torch.ones_like(tensor)
         for _ in range(torch.distributed.get_world_size())]
