@@ -1,4 +1,5 @@
 import math
+import re
 def cosine_lr_schedule(optimizer, epoch, max_epoch, init_lr, min_lr):
     """Decay the learning rate"""
     lr = (init_lr - min_lr) * 0.5 * (1. + math.cos(math.pi * epoch / max_epoch)) + min_lr
@@ -382,3 +383,24 @@ def calculate_ciou(box_1, box_2):
     ciou = iou - float(p2) / c2 - alpha * v
 
     return ciou
+
+def pre_caption(caption,max_words=30):
+    caption = re.sub(
+        r"([,.'!?\"()*#:;~])",
+        '',
+        caption.lower(),
+    ).replace('-', ' ').replace('/', ' ')
+
+    caption = re.sub(
+        r"\s{2,}",
+        ' ',
+        caption,
+    )
+    caption = caption.rstrip('\n') 
+    caption = caption.strip(' ')
+
+    #truncate caption
+    caption_words = caption.split(' ')
+    if len(caption_words)>max_words:
+        caption = ' '.join(caption_words[:max_words])            
+    return caption

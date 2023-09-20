@@ -30,6 +30,7 @@ from transform.randaugment import RandomAugment
 from torchvision.transforms.functional import InterpolationMode
 
 from models.contextual_new import Adapter_BLIP
+from utils import pre_caption
 
 random.seed(10)
 torch.manual_seed(10)
@@ -101,7 +102,7 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--activation", default='relu')
     parser.add_argument("-s", "--logit_scale", default=1000)
     parser.add_argument("--frozen_blip", action="store_true",default=False)
-    parser.add_argument("--finetuned_checkpoint_path", default='output/Pretrain/checkpoint_00.pth')
+    parser.add_argument("--finetuned_checkpoint_path", default='best_9.20.pth')
     parser.add_argument("--add_input", action="store_true",default=True)
     parser.add_argument("--positional", action="store_true",default=True)
     parser.add_argument("--head_scheduler", default= 0.95, type=float)
@@ -170,8 +171,8 @@ if __name__ == "__main__":
             img_total = 0
             ranks = defaultdict(int)
             contextual_blip.eval()
-            for img_dir, img_idx, text in tqdm.tqdm(valid):
-                text = [text]
+            for img_dir, img_idx, text in tqdm.tqdm(valid[:50]):
+                text = [pre_caption(text)]
                 img_idx = int(img_idx)
                 img_files = list((Path(img_dirs) / img_dir).glob("*.jpg"))
                 img_files = sorted(img_files, key=lambda x: int(str(x).split('/')[-1].split('.')[0][3:]))
@@ -219,13 +220,13 @@ if __name__ == "__main__":
                     if 'path' not in key:
                         string += f'_{val}'
                 string += f'_{best_val}_{i}'
-                if not os.path.exists('output/finetune/'):
-                    os.mkdir('output/finetune/')
+                if not os.path.exists('output/finetune_2/'):
+                    os.mkdir('output/finetune_2/')
                 torch.save({
                     'epoch': i,
                     'model_state_dict': contextual_blip.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
-                }, f"output/finetune/CONTEXTUAL_blip_best_{string.replace('/', '')}.pt")
+                }, f"output/finetune_2/CONTEXTUAL_blip_best_{string.replace('/', '')}.pt")
             print('------------------------------')
 
         print(f'EPOCH: {i}')
@@ -235,9 +236,9 @@ if __name__ == "__main__":
         correct = 0
         total = 0
         acc =0
-        for img_dir, img_idx, text in train:
+        for img_dir, img_idx, text in train[:50]:
             step += 1
-            text = [text]
+            text = [pre_caption(text)]
             img_idx = int(img_idx)
             img_files = list((Path(img_dirs) / img_dir).glob("*.jpg"))
             img_files = sorted(img_files, key=lambda x: int(str(x).split('/')[-1].split('.')[0][3:]))
