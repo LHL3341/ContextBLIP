@@ -24,6 +24,7 @@ from extras_ import convert_sents_to_features, BertLayer
 import argparse
 from urllib.parse import urlparse
 from timm.models.hub import download_cached_file
+from utils import pre_caption
 
 from transform.randaugment import RandomAugment
 from torchvision.transforms.functional import InterpolationMode
@@ -35,13 +36,14 @@ random.seed(10)
 torch.manual_seed(10)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--finetuned_checkpoint_path", default='output/Pretrain_2/0.5_0/checkpoint_02.pth')
+parser.add_argument("--finetuned_checkpoint_path", default='best_9.20.pth')
 
 parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
 parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
 parser.add_argument('--imgs_path', type=str, default='./dataset/image-sets')
-
 args = parser.parse_args()
+
+
 with open('analysis/manual_annotation_valid.yaml')as f:
     annotations = yaml.load(f.read(), Loader=yaml.FullLoader)
 phenomenons = defaultdict(int)
@@ -98,7 +100,7 @@ ranks = defaultdict(int)
 model.cuda()
 model.eval()
 for img_dir, img_idx, text in tqdm.tqdm(valid):
-    text = [text]
+    text = [pre_caption(text)]
     img_idx = int(img_idx)
     img_files = list((Path(img_dirs) / img_dir).glob("*.jpg"))
     img_files = sorted(img_files, key=lambda x: int(str(x).split('/')[-1].split('.')[0][3:]))

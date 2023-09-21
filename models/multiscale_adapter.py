@@ -130,6 +130,8 @@ class Adapter_BLIP(nn.Module):
         for param in self.pretrained_blip.parameters():
             param.requires_grad = False
         
+        print('adatper params:',sum(p.numel() for p in self.vision_adapter.parameters() if p.requires_grad))
+        
     def forward(self, image, caption,alpha=None):
         #t1= time()
         B = image.shape[0]

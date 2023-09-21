@@ -41,7 +41,7 @@ os.chdir(sys.path[0])
 
 
 class ContextualBLIP(torch.nn.Module):
-    def __init__(self, bert_config, args,pretrain=True):
+    def __init__(self, bert_config, args=None,pretrain=True):
         super(ContextualBLIP, self).__init__()
         self.blip = Adapter_BLIP(med_config = 'configs/bert_config.json')
         if pretrain:
@@ -52,15 +52,15 @@ class ContextualBLIP(torch.nn.Module):
         config = BertConfig.from_dict(bert_config)
         config.hidden_size = 768
         config.num_attention_heads = 8
-        self.transformer = nn.ModuleList([BertLayer(config) for _ in range(args.transformer_layers)])
+        self.transformer = nn.ModuleList([BertLayer(config) for _ in range(2)])
         self.transformer.cuda()
         self.prediction_layer = nn.Linear(config.hidden_size, 1).cuda()
         self.batch_size = 1
-        self.logit_scale = float(args.logit_scale)
-        self.frozen_blip = args.frozen_blip
-        self.add_input = args.add_input
-        self.positional = args.positional
-        if args.positional:
+
+        self.frozen_blip = False
+        self.add_input = True
+        self.positional = True
+        if self.positional:
             self.positional_emb = torch.nn.Embedding(10, config.hidden_size).cuda()
 
     def forward(self, images, text, pos_mask,output_attn=False):
