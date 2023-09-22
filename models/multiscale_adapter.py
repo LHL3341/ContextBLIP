@@ -247,7 +247,7 @@ class Adapter_BLIP(nn.Module):
         ##================= MIM ========================##   
         if self.mim:
             with torch.no_grad():
-                image_patches,masked_idx,unmasked_idx = mask_image(image,avg_attention_map[...,1:],self.mask_rate)
+                image_patches,masked_idx,unmasked_idx = mask_image(image,avg_attention_map[...,1:],self.mask_rate,random_mask=True)
                 
                 unmasked_patches = torch.stack([image_patches[i,idx] for i,idx in enumerate(unmasked_idx)],dim=0)
 

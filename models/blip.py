@@ -49,7 +49,7 @@ class BLIP_Base(nn.Module):
         self.text_proj = nn.Linear(vision_width,256)    
 
         
-    def forward(self, image, caption, mode):
+    def forward(self, image, caption, mode='multimodal',output_attentions=False):
         
         assert mode in ['image', 'text', 'multimodal'], "mode parameter must be image, text, or multimodal"
         text = self.tokenizer(caption, return_tensors="pt").to(image.device) 
@@ -74,9 +74,13 @@ class BLIP_Base(nn.Module):
             output = self.text_encoder(text.input_ids,
                                        attention_mask = text.attention_mask,
                                        encoder_hidden_states = image_embeds,
-                                       encoder_attention_mask = image_atts,      
+                                       encoder_attention_mask = image_atts,    
+                                       output_attentions = True,  
                                        return_dict = True,
                                       )              
+            if output_attentions:
+                attention_map = torch.stack(output['cross_attentions'],dim=1)
+                return output.last_hidden_state, attention_map    
             return output.last_hidden_state
         
         

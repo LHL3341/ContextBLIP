@@ -19,6 +19,7 @@ from models.contextual import Adapter_BLIP
 from extras_ import convert_sents_to_features, BertLayer
 from finetune import ContextualBLIP
 from volta_src.config import BertConfig
+from utils import pre_caption
 import yaml
 import torch.nn as nn
 
@@ -96,7 +97,7 @@ ranks = defaultdict(int)
 model.cuda()
 model.eval()
 for img_dir, img_idx, text in tqdm.tqdm(valid):
-    text = [text]
+    text = [pre_caption(text)]
     img_idx = int(img_idx)
     img_files = list((Path(img_dirs) / img_dir).glob("*.jpg"))
     img_files = sorted(img_files, key=lambda x: int(str(x).split('/')[-1].split('.')[0][3:]))

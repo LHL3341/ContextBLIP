@@ -28,8 +28,7 @@ def mask_text_(input_ids):
 
     return mask_ids, mask_map
 
-
-def mask_image(image,avg_attention_map,mask_rate,num_patches=196):
+def random_mask(image,avg_attention_map,mask_rate=0.5,num_patches=196):
     patch_h = 16
     patch_w = 16
     b,c,h,w = image.shape
@@ -42,6 +41,29 @@ def mask_image(image,avg_attention_map,mask_rate,num_patches=196):
     ).permute(0, 2, 4, 3, 5, 1).reshape(b, num_patches, -1)
     batch_size = image.shape[0]
     mask_num = int(mask_rate * num_patches)
+    indices = torch.rand(b, num_patches, device=image.device).argsort()
+    masked_idx = indices[:,:mask_num]
+    unmasked_idx = indices[:,mask_num:]
+    return patches,masked_idx,unmasked_idx
+
+def mask_image(image,avg_attention_map,mask_rate=0.5,num_patches=196,random_mask =False):
+    patch_h = 16
+    patch_w = 16
+    b,c,h,w = image.shape
+    num_patches = (h // patch_h) * (w // patch_w)
+    # (b, c=3, h, w)->(b, n_patches, patch_size**2 * c)
+    patches = image.view(
+        b, c,
+        h // patch_h, patch_h, 
+        w // patch_w, patch_w
+    ).permute(0, 2, 4, 3, 5, 1).reshape(b, num_patches, -1)
+    batch_size = image.shape[0]
+    mask_num = int(mask_rate * num_patches)
+    if random_mask:
+        indices = torch.rand(b, num_patches, device=image.device).argsort()
+        masked_idx = indices[:,:mask_num]
+        unmasked_idx = indices[:,mask_num:]
+        return patches,masked_idx,unmasked_idx
 
     masked_token = random.randint(0,avg_attention_map.shape[1]-1)
 
