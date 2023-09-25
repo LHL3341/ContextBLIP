@@ -113,6 +113,7 @@ if __name__ == "__main__":
     parser.add_argument("--transformer_layers", default=2, type=int)
     parser.add_argument("--all_pos", action="store_true",default=False)
     parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--output_dir', type=str, default='output/finetune_2/0.5_0')
     parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
     parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
     parser.add_argument('--train_split_path', type=str, default='./dataset/train_split.json')
@@ -235,13 +236,13 @@ if __name__ == "__main__":
                     if 'path' not in key:
                         string += f'_{val}'
                 string += f'_{best_val}_{i}'
-                if not os.path.exists('output/finetune_2/'):
-                    os.mkdir('output/finetune_2/')
+                if not os.path.exists(args.output_dir):
+                    os.mkdir(args.output_dir)
                 torch.save({
                     'epoch': i,
                     'model_state_dict': contextual_blip.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
-                }, f"output/finetune_2/CONTEXTUAL_blip_best_{string.replace('/', '')}.pt")
+                }, f"{args.output_dir}/CONTEXTUAL_blip_best_{string.replace('/', '')}.pt")
             print('------------------------------')
 
         print(f'EPOCH: {i}')
