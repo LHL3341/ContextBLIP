@@ -91,7 +91,7 @@ class Adapter_BLIP(nn.Module):
             vit (str): model size of vision transformer
         """               
         super().__init__()
-        self.pretrained_blip = BLIP_Base(med_config)
+        self.pretrained_blip = BLIP_Base(med_config,image_size=image_size)
         vision_width = self.pretrained_blip.visual_encoder.embed_dim
 
         self.vision_adapter = MultiLevelAdapter(vision_width)

@@ -46,8 +46,11 @@ class ContextualBLIP(torch.nn.Module):
         self.blip = Adapter_BLIP(med_config = 'configs/bert_config.json')
         if pretrain:
             checkpoint = torch.load(args.finetuned_checkpoint_path)
-            self.blip.load_state_dict(checkpoint['model'],strict= False)
+            msg = self.blip.load_state_dict(checkpoint['model'],strict= False)
             print("load pretrained model")
+        self.blip.pretrained_blip.visual_encoder.pos_embed = nn.Parameter(torch.zeros(1, 577, 768))
+        self.blip.pretrained_blip.visual_encoder.patch_embed.img_size = (384,384)
+        self.blip.pretrained_blip.visual_encoder.patch_embed.grid_size = (24,24)
 
         config = BertConfig.from_dict(bert_config)
         config.hidden_size = 768
@@ -112,12 +115,19 @@ if __name__ == "__main__":
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
     parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
+    parser.add_argument('--train_split_path', type=str, default='./dataset/train_split.json')
+    parser.add_argument('--valid_split_path', type=str, default='./dataset/valid_split.json')
     parser.add_argument('--imgs_path', type=str, default='./dataset/image-sets')
     parser.add_argument("--job_id")
 
     args = parser.parse_args()
     assert args.activation in ['leaky-relu', 'relu', 'gelu']
     wandb.config.update(args)
+
+    with open(args.train_split_path) as f:
+        train_split = json.load(f)
+    with open(args.valid_split_path) as f:
+        valid_split = json.load(f)
 
     img_dirs = args.imgs_path
     valid_data = json.load(open(args.valid_descr_path, 'r'))
@@ -126,10 +136,15 @@ if __name__ == "__main__":
     for img_dir, data in train_data.items():
         for img_idx, text in data.items():
             train.append((img_dir, img_idx, text))
+            if text in train_split:
+                train += [(img_dir, img_idx, sentence) for sentence in train_split[text]]
     valid = []
     for img_dir, data in valid_data.items():
         for img_idx, text in data.items():
             valid.append((img_dir, img_idx, text))
+            if text in valid_split:
+                valid += [(img_dir, img_idx, sentence) for sentence in valid_split[text]]
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f'DEVICE USED: {device}')
 
@@ -171,7 +186,7 @@ if __name__ == "__main__":
             img_total = 0
             ranks = defaultdict(int)
             contextual_blip.eval()
-            for img_dir, img_idx, text in tqdm.tqdm(valid[:50]):
+            for img_dir, img_idx, text in tqdm.tqdm(valid):
                 text = [pre_caption(text)]
                 img_idx = int(img_idx)
                 img_files = list((Path(img_dirs) / img_dir).glob("*.jpg"))
@@ -179,7 +194,7 @@ if __name__ == "__main__":
                 images = [Image.open(photo_file).convert("RGB") for photo_file in img_files]
 
                 preprocess = transforms.Compose([
-                    transforms.Resize((224,224),interpolation=InterpolationMode.BICUBIC),
+                    transforms.Resize((384,384),interpolation=InterpolationMode.BICUBIC),
                     transforms.ToTensor(),
                     transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
                     ])  
@@ -236,7 +251,7 @@ if __name__ == "__main__":
         correct = 0
         total = 0
         acc =0
-        for img_dir, img_idx, text in train[:50]:
+        for img_dir, img_idx, text in train:
             step += 1
             text = [pre_caption(text)]
             img_idx = int(img_idx)
@@ -245,7 +260,7 @@ if __name__ == "__main__":
             images = [Image.open(photo_file).convert("RGB") for photo_file in img_files]
 
             preprocess = transforms.Compose([                        
-                transforms.RandomResizedCrop(224,scale=(0.2, 1.0),interpolation=InterpolationMode.BICUBIC),
+                transforms.RandomResizedCrop(384,scale=(0.2, 1.0),interpolation=InterpolationMode.BICUBIC),
                 transforms.RandomHorizontalFlip(),
                 RandomAugment(2,5,isPIL=True,augs=['Identity','AutoContrast','Brightness','Sharpness','Equalize',
                                                 'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
