@@ -143,8 +143,8 @@ if __name__ == "__main__":
     for img_dir, data in valid_data.items():
         for img_idx, text in data.items():
             valid.append((img_dir, img_idx, text))
-            if text in valid_split:
-                valid += [(img_dir, img_idx, sentence) for sentence in valid_split[text]]
+            #if text in valid_split:
+                #valid += [(img_dir, img_idx, sentence) for sentence in valid_split[text]]
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f'DEVICE USED: {device}')
