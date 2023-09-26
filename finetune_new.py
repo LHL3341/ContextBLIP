@@ -47,10 +47,10 @@ class ContextualBLIP(torch.nn.Module):
         if pretrain:
             checkpoint = torch.load(args.finetuned_checkpoint_path)
             msg = self.blip.load_state_dict(checkpoint['model'],strict= False)
-            print("load pretrained model")
-        self.blip.pretrained_blip.visual_encoder.pos_embed = nn.Parameter(torch.zeros(1, 577, 768))
-        self.blip.pretrained_blip.visual_encoder.patch_embed.img_size = (384,384)
-        self.blip.pretrained_blip.visual_encoder.patch_embed.grid_size = (24,24)
+            print("load pretrained model:",msg)
+        #self.blip.pretrained_blip.visual_encoder.pos_embed = nn.Parameter(torch.zeros(1, 577, 768))
+        #self.blip.pretrained_blip.visual_encoder.patch_embed.img_size = (384,384)
+        #self.blip.pretrained_blip.visual_encoder.patch_embed.grid_size = (24,24)
 
         config = BertConfig.from_dict(bert_config)
         config.hidden_size = 768
@@ -195,7 +195,7 @@ if __name__ == "__main__":
                 images = [Image.open(photo_file).convert("RGB") for photo_file in img_files]
 
                 preprocess = transforms.Compose([
-                    transforms.Resize((384,384),interpolation=InterpolationMode.BICUBIC),
+                    transforms.Resize((224,224),interpolation=InterpolationMode.BICUBIC),
                     transforms.ToTensor(),
                     transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
                     ])  
@@ -261,7 +261,7 @@ if __name__ == "__main__":
             images = [Image.open(photo_file).convert("RGB") for photo_file in img_files]
 
             preprocess = transforms.Compose([                        
-                transforms.RandomResizedCrop(384,scale=(0.2, 1.0),interpolation=InterpolationMode.BICUBIC),
+                transforms.RandomResizedCrop(224,scale=(0.2, 1.0),interpolation=InterpolationMode.BICUBIC),
                 transforms.RandomHorizontalFlip(),
                 RandomAugment(2,5,isPIL=True,augs=['Identity','AutoContrast','Brightness','Sharpness','Equalize',
                                                 'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
