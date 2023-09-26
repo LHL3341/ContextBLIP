@@ -128,10 +128,16 @@ class Adapter_BLIP(nn.Module):
             self.text_decoder = self.pretrained_blip.text_encoder
 
         self.vision_adapter = MultiLevelAdapter(vision_width)
+
+        print('vit params:',sum(p.numel() for p in self.pretrained_blip.visual_encoder.parameters() if p.requires_grad))
+        print('text encoder:',sum(p.numel() for p in self.pretrained_blip.text_encoder.parameters() if p.requires_grad))
+        print('itm-head params:',sum(p.numel() for p in self.pretrained_blip.itm_head.parameters() if p.requires_grad))
+        print('adatper params:',sum(p.numel() for p in self.vision_adapter.parameters() if p.requires_grad))
+
+
         for param in self.pretrained_blip.parameters():
             param.requires_grad = False
-        
-        print('adatper params:',sum(p.numel() for p in self.vision_adapter.parameters() if p.requires_grad))
+
         
     def forward(self, image, caption,alpha=None):
         #t1= time()
@@ -273,12 +279,12 @@ class Adapter_BLIP(nn.Module):
             text_embeds = output_pos.last_hidden_state + self.text_adapter(output_pos.last_hidden_state)
 
             masked_tokens = self.mask_embed[None, None, :].repeat(B, masked_idx.shape[1], 1)
-            #masked_tokens += self.decoder_pos_embed(masked_idx)
+            masked_tokens += self.decoder_pos_embed(masked_idx)
             concat_tokens = torch.cat([masked_tokens, unmask_tokens], dim=1)
 
             ids = torch.cat([masked_idx,torch.zeros(B,1).cuda()-1,unmasked_idx],dim=1)
             sorted_id = ids.argsort()
-            dec_input_tokens = torch.stack([concat_tokens[i,id] for i,id in enumerate(sorted_id)],dim=0)+self.decoder_pos_embed.weight.repeat(B,1,1)
+            dec_input_tokens = torch.stack([concat_tokens[i,id] for i,id in enumerate(sorted_id)],dim=0)
             
             recon_image_embeds = self.visual_decoder(encoder_embeds=dec_input_tokens,
                                                     attention_mask = image_atts,
