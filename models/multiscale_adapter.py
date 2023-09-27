@@ -35,9 +35,9 @@ class Adapter(nn.Module):
 class MultiLevelAdapter(nn.Module):
     def __init__(self, c_in, reduction=4):
         super(MultiLevelAdapter, self).__init__()
-        self.adapt_layer = [3,6,9,12]
+        self.adapt_layer = range(12)
         self.down = nn.ModuleList([DownSampler(c_in) for i in self.adapt_layer])
-        self.up = UpSampler(c_in)
+        self.up = UpSampler(c_in,reduction=len(self.adapt_layer)//reduction)
 
     def forward(self,x, hidden):
         latent_features = []
@@ -64,7 +64,7 @@ class UpSampler(nn.Module):
     def __init__(self, c_in, reduction=1):
         super(UpSampler, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(c_in // reduction, c_in, bias=False),
+            nn.Linear(c_in * reduction, c_in, bias=False),
             nn.ReLU(inplace=True)
         )
 
