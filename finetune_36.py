@@ -100,6 +100,7 @@ if __name__ == "__main__":
     config = wandb.config
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--batchsize", type=int, default=36)
+    parser.add_argument("--wd", type=float, default=0.2)
     parser.add_argument("--lr_head", type=float, default=1e-4)
     parser.add_argument("--lr", type=float, default=2e-6)
     parser.add_argument("-m", "--model", type=str, default='ViT-B/16')
@@ -153,7 +154,7 @@ if __name__ == "__main__":
     head_params = list(contextual_blip.transformer.parameters()) + list(contextual_blip.prediction_layer.parameters())
     if args.positional:
         head_params += list(contextual_blip.positional_emb.parameters())
-    optimizer = optim.Adam([{"params": contextual_blip.blip.parameters()}, {"params": head_params, "lr": config.lr_head}] , lr=config.lr, betas=(0.9, 0.98), eps=1e-6, weight_decay=0.2)
+    optimizer = optim.Adam([{"params": contextual_blip.blip.parameters()}, {"params": head_params, "lr": config.lr_head}] , lr=config.lr, betas=(0.9, 0.98), eps=1e-6, weight_decay=config.wd)
 
     lambda1 = lambda epoch: args.base_scheduler ** epoch
     lambda2 = lambda epoch: args.head_scheduler ** epoch
@@ -223,7 +224,7 @@ if __name__ == "__main__":
                         string += f'_{val}'
                 string += f'_{best_val}_{i}'
                 if not os.path.exists(args.output_dir):
-                    os.mkdir(args.output_dir)
+                    os.makedirs(args.output_dir)
                 torch.save({
                     'epoch': i,
                     'model_state_dict': contextual_blip.state_dict(),
