@@ -36,10 +36,11 @@ random.seed(10)
 torch.manual_seed(10)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--finetuned_checkpoint_path", default='best_9.20.pth')
+parser.add_argument("--finetuned_checkpoint_path", default='0.25_12.pth')
 
 parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
 parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
+parser.add_argument('--reduction', type=int, default=4)
 parser.add_argument('--imgs_path', type=str, default='./dataset/image-sets')
 args = parser.parse_args()
 
@@ -85,7 +86,7 @@ print(f'DEVICE USED: {device}')
 
 
 bert_config = json.load(open('vilbert-and-bert-config.json', 'r'))
-model = Adapter_BLIP()
+model = Adapter_BLIP(reduction=args.reduction)
 checkpoint = torch.load(args.finetuned_checkpoint_path)
 model.load_state_dict(checkpoint['model'],strict= False)
 

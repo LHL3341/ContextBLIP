@@ -14,7 +14,7 @@ from torch import nn
 import torch.nn.functional as F
 
 from models.blip import BLIP_Base
-
+"""
 class Adapter(nn.Module):
     def __init__(self, c_in, reduction=4):
         super(Adapter, self).__init__()
@@ -87,8 +87,9 @@ class MultiLevelAdapter(nn.Module):
     def __init__(self, c_in, reduction=4):
         super(MultiLevelAdapter, self).__init__()
         self.adapt_layer = [3,6,9,12]
-        self.down = nn.ModuleList([DownSampler(c_in) for i in self.adapt_layer])
-        self.up = UpSampler(c_in)
+        layer_num=len(self.adapt_layer)
+        self.down = nn.ModuleList([DownSampler(c_in,reduction) for i in self.adapt_layer])
+        self.up = UpSampler(c_in,reduction=reduction/layer_num)
 
     def forward(self,x, hidden):
         latent_features = []
@@ -115,20 +116,21 @@ class UpSampler(nn.Module):
     def __init__(self, c_in, reduction=1):
         super(UpSampler, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(c_in // reduction, c_in, bias=False),
+            nn.Linear(int(c_in / reduction), c_in, bias=False),
             nn.ReLU(inplace=True)
         )
 
     def forward(self, x):
         x = self.fc(x)
         return x
-"""
+
     
     
 class Adapter_BLIP(nn.Module):
     def __init__(self,                 
                  med_config = 'configs/bert_config.json',  
                  blip_path = 'model_base_14M.pth',
+                 reduction = 4,
                  image_size = 224,
                  vit = 'base',
                  vit_grad_ckpt = False,
@@ -147,7 +149,7 @@ class Adapter_BLIP(nn.Module):
         self.pretrained_blip = BLIP_Base(med_config,image_size=image_size)
         vision_width = self.pretrained_blip.visual_encoder.embed_dim
 
-        self.vision_adapter = MultiLevelAdapter(vision_width)
+        self.vision_adapter = MultiLevelAdapter(vision_width,reduction)
         
     def forward(self, image, caption,output_attentions = False):
     

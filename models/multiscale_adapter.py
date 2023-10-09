@@ -36,8 +36,9 @@ class MultiLevelAdapter(nn.Module):
     def __init__(self, c_in, reduction=4):
         super(MultiLevelAdapter, self).__init__()
         self.adapt_layer = [3,6,9,12]
-        self.down = nn.ModuleList([DownSampler(c_in) for i in self.adapt_layer])
-        self.up = UpSampler(c_in)
+        layer_num=len(self.adapt_layer)
+        self.down = nn.ModuleList([DownSampler(c_in,reduction) for i in self.adapt_layer])
+        self.up = UpSampler(c_in,reduction=reduction/layer_num)
 
     def forward(self,x, hidden):
         latent_features = []
@@ -64,7 +65,7 @@ class UpSampler(nn.Module):
     def __init__(self, c_in, reduction=1):
         super(UpSampler, self).__init__()
         self.fc = nn.Sequential(
-            nn.Linear(c_in // reduction, c_in, bias=False),
+            nn.Linear(int(c_in / reduction), c_in, bias=False),
             nn.ReLU(inplace=True)
         )
 
@@ -133,6 +134,7 @@ class Adapter_BLIP(nn.Module):
                  prompt_length,
                  med_config = 'configs/bert_config.json',  
                  blip_path = 'model_base_14M.pth',
+                 reduction = 4,
                  image_size = 224,
                  random_mask = False,
                  vit = 'base',
@@ -182,7 +184,7 @@ class Adapter_BLIP(nn.Module):
             self.pred_head = nn.Linear(text_width,len(self.pretrained_blip.tokenizer)-2)
             self.text_decoder = self.pretrained_blip.text_encoder
 
-        self.vision_adapter = MultiLevelAdapter(vision_width)
+        self.vision_adapter = MultiLevelAdapter(vision_width,reduction)
 
         print('vit params:',sum(p.numel() for p in self.pretrained_blip.visual_encoder.parameters() if p.requires_grad))
         print('text encoder:',sum(p.numel() for p in self.pretrained_blip.text_encoder.parameters() if p.requires_grad))
@@ -433,7 +435,7 @@ def concat_all_gather(tensor):
     *** Warning ***: torch.distributed.all_gather has no gradient.
     """
 
-    #sreturn tensor
+    #return tensor
     
     tensors_gather = [torch.ones_like(tensor)
         for _ in range(torch.distributed.get_world_size())]
