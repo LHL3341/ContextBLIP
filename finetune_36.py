@@ -66,6 +66,7 @@ class ContextualBLIP(torch.nn.Module):
         self.positional = True
         if self.positional:
             self.positional_emb = torch.nn.Embedding(10, config.hidden_size).cuda()
+        print('tf params:',sum(p.numel() for p in self.transformer.parameters() if p.requires_grad))
 
     def forward(self, images, text, pos_mask,output_attn=False):
 
@@ -113,6 +114,7 @@ if __name__ == "__main__":
     parser.add_argument("--head_scheduler", default= 0.95, type=float)
     parser.add_argument("--base_scheduler", default= 0.95, type=float)
     parser.add_argument("--transformer_layers", default=2, type=int)
+    
     parser.add_argument("--all_pos", action="store_true",default=False)
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--output_dir', type=str, default='output/finetune_2/0.5_0')

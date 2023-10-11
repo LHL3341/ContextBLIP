@@ -130,7 +130,7 @@ class Adapter_BLIP(nn.Module):
     def __init__(self,                 
                  med_config = 'configs/bert_config.json',  
                  blip_path = 'model_base_14M.pth',
-                 reduction = 4,
+                 reduction = 2,
                  image_size = 224,
                  vit = 'base',
                  vit_grad_ckpt = False,
