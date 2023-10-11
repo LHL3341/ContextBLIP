@@ -60,7 +60,62 @@ class UpSampler(nn.Module):
     def forward(self, x):
         x = self.fc(x)
         return x
+    """
+
+class Adapter(nn.Module):
+    def __init__(self, c_in, reduction=4):
+        super(Adapter, self).__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(c_in, c_in // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(c_in // reduction, c_in, bias=False),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        x = self.fc(x)
+        return x
     
+class MultiLevelAdapter(nn.Module):
+    def __init__(self, c_in, reduction=4):
+        super(MultiLevelAdapter, self).__init__()
+        self.adapt_layer = [3,6,9,12]
+        self.down = nn.ModuleList([DownSampler(c_in) for i in self.adapt_layer])
+        self.up = UpSampler(c_in)
+
+    def forward(self,x, hidden):
+        latent_features = []
+        for i,layer in enumerate(self.adapt_layer):
+            latent = self.down[i](hidden[layer-1])
+            latent_features.append(latent)
+        latent_features = torch.cat(latent_features,dim=2)
+        x = x + self.up(latent_features)
+        return x
+
+class DownSampler(nn.Module):
+    def __init__(self, c_in, reduction=4):
+        super(DownSampler, self).__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(c_in, c_in // reduction, bias=False),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        x = self.fc(x)
+        return x
+    
+class UpSampler(nn.Module):
+    def __init__(self, c_in, reduction=1):
+        super(UpSampler, self).__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(c_in // reduction, c_in, bias=False),
+            nn.ReLU(inplace=True)
+        )
+
+    def forward(self, x):
+        x = self.fc(x)
+        return x
+"""
     
 class BLIP_Retrieval(nn.Module):
     def __init__(self,                 

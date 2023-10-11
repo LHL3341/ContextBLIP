@@ -329,8 +329,8 @@ def main(args, config):
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()     
-    parser.add_argument('--config', default='./configs/retrieval_flickr.yaml')
-    parser.add_argument('--output_dir', default='output/Retrieval_flickr')        
+    parser.add_argument('--config', default='./configs/retrieval_coco.yaml')
+    parser.add_argument('--output_dir', default='output/Retrieval_coco')        
     parser.add_argument('--evaluate', default=True)
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=42, type=int)
