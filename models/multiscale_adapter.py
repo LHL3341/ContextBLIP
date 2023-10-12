@@ -19,7 +19,7 @@ from mask import mask_image,mask_text
 from time import time
 
 class Adapter(nn.Module):
-    def __init__(self, c_in, reduction=4):
+    def __init__(self, c_in, reduction=2):
         super(Adapter, self).__init__()
         self.fc = nn.Sequential(
             nn.Linear(c_in, c_in // reduction, bias=False),
@@ -33,9 +33,9 @@ class Adapter(nn.Module):
         return x
     
 class MultiLevelAdapter(nn.Module):
-    def __init__(self, c_in, reduction=4):
+    def __init__(self, c_in, reduction=2):
         super(MultiLevelAdapter, self).__init__()
-        self.adapt_layer = [3,6,9,12]
+        self.adapt_layer = range(12)
         layer_num=len(self.adapt_layer)
         self.down = nn.ModuleList([DownSampler(c_in,reduction) for i in self.adapt_layer])
         self.up = UpSampler(c_in,reduction=reduction/layer_num)
@@ -50,7 +50,7 @@ class MultiLevelAdapter(nn.Module):
         return x
 
 class DownSampler(nn.Module):
-    def __init__(self, c_in, reduction=4):
+    def __init__(self, c_in, reduction=2):
         super(DownSampler, self).__init__()
         self.fc = nn.Sequential(
             nn.Linear(c_in, c_in // reduction, bias=False),
@@ -134,7 +134,7 @@ class Adapter_BLIP(nn.Module):
                  prompt_length,
                  med_config = 'configs/bert_config.json',  
                  blip_path = 'model_base_14M.pth',
-                 reduction = 4,
+                 reduction = 2,
                  image_size = 224,
                  random_mask = False,
                  vit = 'base',
