@@ -57,7 +57,7 @@ class ImageCoDeDataset(Dataset):
         else:
             self.image_transform = default_image_transform
         if split == 'train':
-            self.image_transform = transform_train
+            self.image_transform = transform_test
         if split == 'valid':
             self.image_transform = transform_test
         
