@@ -241,6 +241,12 @@ if __name__ == "__main__":
         correct = 0
         total = 0
         acc =0
+        preprocess = transforms.Compose([
+            transforms.Resize((224,224),interpolation=InterpolationMode.BICUBIC),
+            transforms.ToTensor(),
+            transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+            ])  
+        """
         preprocess = transforms.Compose([                        
                 transforms.RandomResizedCrop(224,scale=(0.2, 1.0),interpolation=InterpolationMode.BICUBIC),
                 transforms.RandomHorizontalFlip(),
@@ -249,6 +255,7 @@ if __name__ == "__main__":
                 transforms.ToTensor(),
                 transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
             ])
+        """
         for img, txt, img_index,is_video in tqdm.tqdm(train_loader):
             # 36,10,3,224,224
             # 36
