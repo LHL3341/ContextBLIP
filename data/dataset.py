@@ -41,6 +41,31 @@ transform_train = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
     ]) 
+transform_1 = transforms.Compose([                        
+        transforms.RandomResizedCrop(224,scale=(0.2, 1.0),interpolation=InterpolationMode.BICUBIC),
+        RandomAugment(2,5,isPIL=True,augs=['Identity','AutoContrast','Brightness','Sharpness','Equalize',
+                                        'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
+        transforms.ToTensor(),
+        transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+    ]) 
+transform_2 = transforms.Compose([                        
+        transforms.RandomResizedCrop(224,scale=(0.5, 1.0),interpolation=InterpolationMode.BICUBIC),
+        transforms.RandomHorizontalFlip(),
+        RandomAugment(2,5,isPIL=True,augs=['Identity','AutoContrast','Brightness','Sharpness','Equalize',
+                                        'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
+        transforms.ToTensor(),
+        transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+    ]) 
+
+transform_3 = transforms.Compose([                        
+        transforms.RandomResizedCrop(224,scale=(0.2, 1.0),interpolation=InterpolationMode.BICUBIC),
+        transforms.RandomHorizontalFlip(),
+        RandomAugment(2,10,isPIL=True,augs=['Identity','AutoContrast','Brightness','Sharpness','Equalize',
+                                        'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
+        transforms.ToTensor(),
+        transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+    ]) 
+
 transform_test = transforms.Compose([
             transforms.Resize((224,224),interpolation=InterpolationMode.BICUBIC),
             transforms.ToTensor(),
@@ -57,7 +82,15 @@ class ImageCoDeDataset(Dataset):
         else:
             self.image_transform = default_image_transform
         if split == 'train':
-            self.image_transform = transform_test
+            self.image_transform = transform_train
+            if image_transform == 1:
+                self.image_transform = transform_1
+            if image_transform == 2:
+                self.image_transform = transform_2
+            if image_transform == 3:
+                self.image_transform = transform_3
+            
+            
         if split == 'valid':
             self.image_transform = transform_test
         

@@ -114,7 +114,7 @@ if __name__ == "__main__":
     parser.add_argument("--head_scheduler", default= 0.95, type=float)
     parser.add_argument("--base_scheduler", default= 0.95, type=float)
     parser.add_argument("--transformer_layers", default=2, type=int)
-    
+    parser.add_argument("--augmentation", default=0, type=int)
     parser.add_argument("--all_pos", action="store_true",default=False)
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--output_dir', type=str, default='output/finetune_2/0.5_0')
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     assert args.activation in ['leaky-relu', 'relu', 'gelu']
     wandb.config.update(args)
 
-    trainset = ImageCoDeDataset('dataset',split='train')
+    trainset = ImageCoDeDataset('dataset',split='train',image_transform=args.augmentation)
     validset = ImageCoDeDataset('dataset',split='valid')
     train_loader = DataLoader(trainset,36,shuffle=True,num_workers=4)
     valid_loader = DataLoader(validset,36,shuffle=False,num_workers=4)
@@ -241,6 +241,7 @@ if __name__ == "__main__":
         correct = 0
         total = 0
         acc =0
+        """
         preprocess = transforms.Compose([
             transforms.Resize((224,224),interpolation=InterpolationMode.BICUBIC),
             transforms.ToTensor(),
@@ -255,7 +256,7 @@ if __name__ == "__main__":
                 transforms.ToTensor(),
                 transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
             ])
-        """
+        wandb.log({'lr':optimizer.state_dict()['param_groups'][0]['lr']})
         for img, txt, img_index,is_video in tqdm.tqdm(train_loader):
             # 36,10,3,224,224
             # 36
@@ -294,4 +295,5 @@ if __name__ == "__main__":
             optimizer.zero_grad()
         acc = round(correct / total, 4)
         wandb.log({'train_acc': acc})
+        
         scheduler.step()
