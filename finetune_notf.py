@@ -100,7 +100,7 @@ if __name__ == "__main__":
     parser.add_argument("--transformer_layers", default=2, type=int)
     parser.add_argument("--augmentation", default=0, type=int)
     parser.add_argument("--all_pos", action="store_true",default=False)
-    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--epochs', type=int, default=40)
     parser.add_argument('--output_dir', type=str, default='output/finetune_2/0.5_0')
     parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
     parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
@@ -222,6 +222,10 @@ if __name__ == "__main__":
 
         contextual_blip.train()
         correct = 0
+        video_correct = 0
+        img_correct = 0
+        video_total = 0
+        img_total = 0
         total = 0
         acc =0
         """
@@ -263,6 +267,14 @@ if __name__ == "__main__":
                 pred = torch.argmax(logits).squeeze()
                 if img_idx == pred:
                     correct += 1
+                if not is_video[b]:
+                    img_total += 1
+                    if img_idx == pred:
+                        img_correct += 1
+                else:
+                    video_total += 1
+                    if img_idx == pred:
+                        video_correct += 1    
                 total += 1
 
                 loss.backward()
@@ -278,5 +290,8 @@ if __name__ == "__main__":
             optimizer.zero_grad()
         acc = round(correct / total, 4)
         wandb.log({'train_acc': acc})
-        
+        vacc = round(video_correct / video_total, 4)
+        sacc = round(img_correct / img_total, 4)
+        wandb.log({'train_vacc': vacc})
+        wandb.log({'train_sacc': sacc})
         scheduler.step()

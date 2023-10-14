@@ -63,14 +63,14 @@ class ContextualBLIP(torch.nn.Module):
         config = BertConfig.from_dict(bert_config)
         config.hidden_size = 768
         config.num_attention_heads = 8
-        self.transformer = nn.ModuleList([BertLayer(config) for _ in range(2)])
-        self.transformer.cuda()
+        #self.transformer = nn.ModuleList([BertLayer(config) for _ in range(2)])
+        #self.transformer.cuda()
         self.prediction_layer = nn.Linear(config.hidden_size, 1).cuda()
         self.batch_size = 1
         self.positional=True
         self.add_input =True
         self.frozen_blip=False
-        self.positional_emb = torch.nn.Embedding(10, config.hidden_size).cuda()
+        #self.positional_emb = torch.nn.Embedding(10, config.hidden_size).cuda()
 
     def forward(self, images, text, pos_mask):
         if self.frozen_blip:
@@ -82,7 +82,9 @@ class ContextualBLIP(torch.nn.Module):
             features = features[:, 0, :].squeeze()
         # normalized features
         features = features / features.norm(dim=-1, keepdim=True)
+        x= features
         # x_ = torch.unsqueeze(x, dim=0)
+        """
         if self.positional:
             embs = self.positional_emb(torch.arange(10).cuda())
             embs = embs * pos_mask
@@ -96,6 +98,7 @@ class ContextualBLIP(torch.nn.Module):
             x = layer_module(x, attention_mask)
         if self.add_input:
             x = x + features
+        """
         preds = self.prediction_layer(x)
         return preds
 if __name__ == "__main__":
@@ -106,6 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--batchsize", type=int, default=36)
     parser.add_argument("--lr_head", type=float, default=1e-4)
     parser.add_argument("--lr", type=float, default=2e-6)
+    parser.add_argument("--wd", type=float, default=0.2)
     parser.add_argument("-m", "--model", type=str, default='ViT-B/16')
     parser.add_argument("-a", "--activation", default='relu')
     parser.add_argument("-s", "--logit_scale", default=1000)
@@ -117,7 +121,8 @@ if __name__ == "__main__":
     parser.add_argument("--base_scheduler", default= 0.95, type=float)
     parser.add_argument("--transformer_layers", default=2, type=int)
     parser.add_argument("--all_pos", action="store_true",default=False)
-    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--output_dir', type=str, default='output/blip_finetune')
+    parser.add_argument('--epochs', type=int, default=40)
     parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
     parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
     parser.add_argument('--imgs_path', type=str, default='./dataset/image-sets')
@@ -155,12 +160,11 @@ if __name__ == "__main__":
     #     clip.model.convert_weights(
     #         contextual_blip)  # Actually this line is unnecessary since clip by default already on float16
 
-    MAX_EPOCHS = 20
+    MAX_EPOCHS = 40
     loss_mix = nn.CrossEntropyLoss()
-    head_params = list(contextual_blip.transformer.parameters()) + list(contextual_blip.prediction_layer.parameters())
-    if args.positional:
-        head_params += list(contextual_blip.positional_emb.parameters())
-    optimizer = optim.Adam([{"params": contextual_blip.blip.parameters()}, {"params": head_params, "lr": config.lr_head}] , lr=config.lr, betas=(0.9, 0.98), eps=1e-6, weight_decay=0.2)
+    head_params = list(contextual_blip.prediction_layer.parameters())
+    
+    optimizer = optim.Adam([{"params": contextual_blip.blip.parameters()}, {"params": head_params, "lr": config.lr_head}] , lr=config.lr, betas=(0.9, 0.98), eps=1e-6, weight_decay=args.wd)
 
     lambda1 = lambda epoch: args.base_scheduler ** epoch
     lambda2 = lambda epoch: args.head_scheduler ** epoch
@@ -227,11 +231,13 @@ if __name__ == "__main__":
                     if 'path' not in key:
                         string += f'_{val}'
                 string += f'_{best_val}_{i}'
+                if not os.path.exists(args.output_dir):
+                    os.makedirs(args.output_dir)
                 torch.save({
                     'epoch': i,
                     'model_state_dict': contextual_blip.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
-                }, f"checkpoints/1/CONTEXTUAL_blip_best_{string.replace('/', '')}.pt")
+                }, f"{args.output_dir}/CONTEXTUAL_blip_best_{string.replace('/', '')}.pt")
             print('------------------------------')
 
         print(f'EPOCH: {i}')
@@ -239,6 +245,10 @@ if __name__ == "__main__":
         random.shuffle(train)
         contextual_blip.train()
         correct = 0
+        video_correct = 0
+        img_correct = 0
+        video_total = 0
+        img_total = 0
         total = 0
         for img_dir, img_idx, text in train:
             step += 1
@@ -273,6 +283,14 @@ if __name__ == "__main__":
             pred = torch.argmax(logits).squeeze()
             if img_idx == pred:
                 correct += 1
+            if "open-images" in str(img_dir):
+                img_total += 1
+                if img_idx == pred:
+                    img_correct += 1
+            else:
+                video_total += 1
+                if img_idx == pred:
+                    video_correct += 1  
             total += 1
             if step % config.batchsize == 0:
                 print(f'TOTAL LOSS: {loss}')
@@ -283,6 +301,10 @@ if __name__ == "__main__":
                 #clip.model.convert_weights(contextual_blip)
                 #contextual_blip.blip.float()
                 optimizer.zero_grad()
-        wandb.log({'train_acc': acc})
         acc = round(correct / total, 4)
+        wandb.log({'train_acc': acc})
+        vacc = round(video_correct / video_total, 4)
+        sacc = round(img_correct / img_total, 4)
+        wandb.log({'train_vacc': vacc})
+        wandb.log({'train_sacc': sacc})
         scheduler.step()
