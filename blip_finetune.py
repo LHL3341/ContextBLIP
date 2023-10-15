@@ -65,7 +65,7 @@ class ContextualBLIP(torch.nn.Module):
         config.num_attention_heads = 8
         #self.transformer = nn.ModuleList([BertLayer(config) for _ in range(2)])
         #self.transformer.cuda()
-        self.prediction_layer = nn.Linear(config.hidden_size, 1).cuda()
+        self.prediction_layer = nn.Linear(config.hidden_size, 1)
         self.batch_size = 1
         self.positional=True
         self.add_input =True
@@ -148,7 +148,7 @@ if __name__ == "__main__":
 
 
     bert_config = json.load(open('vilbert-and-bert-config.json', 'r'))
-    contextual_blip = ContextualBLIP(bert_config, args)
+    contextual_blip = ContextualBLIP(bert_config, args).cuda()
     #clip.model.convert_weights(contextual_blip)
     #contextual_blip.blip.float()
 
@@ -170,6 +170,7 @@ if __name__ == "__main__":
     lambda2 = lambda epoch: args.head_scheduler ** epoch
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=[lambda1, lambda2])
     best_val = 0
+    
 
     for i in range(args.epochs):
         save_model = False
