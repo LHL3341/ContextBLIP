@@ -73,6 +73,7 @@ class UpSampler(nn.Module):
 class MultiLevelAdapter(nn.Module):
     def __init__(self, c_in, reduction=2):
         super(MultiLevelAdapter, self).__init__()
+        print("reduction:",reduction)
         self.adapt_layer = [3,6,9,12]
         layer_num=len(self.adapt_layer)
         self.down = nn.ModuleList([DownSampler(c_in,reduction) for i in self.adapt_layer])
