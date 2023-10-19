@@ -99,6 +99,7 @@ if __name__ == "__main__":
     parser.add_argument("--base_scheduler", default= 0.95, type=float)
     parser.add_argument("--transformer_layers", default=2, type=int)
     parser.add_argument("--augmentation", default=0, type=int)
+    parser.add_argument("--reduction", default=4, type=int)
     parser.add_argument("--all_pos", action="store_true",default=False)
     parser.add_argument('--epochs', type=int, default=40)
     parser.add_argument('--output_dir', type=str, default='output/finetune_2/0.5_0')
