@@ -44,7 +44,7 @@ os.chdir(sys.path[0])
 class ContextualBLIP(torch.nn.Module):
     def __init__(self, bert_config, args=None,pretrain=True):
         super(ContextualBLIP, self).__init__()
-        self.blip = Adapter_BLIP(med_config = 'configs/bert_config.json')
+        self.blip = Adapter_BLIP(med_config = 'configs/bert_config.json',reduction=args.reduction)
         if pretrain:
             checkpoint = torch.load(args.finetuned_checkpoint_path)
             msg = self.blip.load_state_dict(checkpoint['model'],strict= False)

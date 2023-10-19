@@ -42,14 +42,15 @@ os.chdir(sys.path[0])
 
 
 class ContextualBLIP(torch.nn.Module):
-    def __init__(self, bert_config, args=None,pretrain=True):
+    def __init__(self, bert_config, args=None,test=False):
         super(ContextualBLIP, self).__init__()
 
         bert_config = json.load(open('vilbert-and-bert-config.json', 'r'))
         self.blip = Adapter_BLIP(bert_config, args,pretrain=False).cuda()
-        checkpoint = torch.load(args.finetuned_checkpoint_path)
-        msg = self.blip.load_state_dict(checkpoint['model_state_dict'],strict= False)
-        print(msg)
+        if test==False:
+            checkpoint = torch.load(args.finetuned_checkpoint_path)
+            msg = self.blip.load_state_dict(checkpoint['model_state_dict'],strict= False)
+            print(msg)
         
         config = BertConfig.from_dict(bert_config)
         config.hidden_size = 768
@@ -66,7 +67,7 @@ class ContextualBLIP(torch.nn.Module):
         with torch.no_grad():
             batchsize = images.shape[0]
             if output_attn:
-                features,attn_map = self.blip(images,text)
+                features,attn_map = self.blip.blip(images,text)
             else:
                 features = self.blip.blip(images,text)
             features = features[:, 0, :].squeeze()
@@ -108,6 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("--augmentation", default=0, type=int)
     parser.add_argument("--all_pos", action="store_true",default=False)
     parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--reduction', type=int, default=4)
     parser.add_argument('--output_dir', type=str, default='output/finetune_2/0.5_0')
     parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
     parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
