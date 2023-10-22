@@ -33,8 +33,6 @@ from models.contextual_new import Adapter_BLIP
 from torch.utils.data import DataLoader 
 from utils import pre_caption
 
-random.seed(10)
-torch.manual_seed(10)
 
 
 #改变工作目录
@@ -108,11 +106,15 @@ if __name__ == "__main__":
     parser.add_argument('--train_split_path', type=str, default='./dataset/train_split.json')
     parser.add_argument('--valid_split_path', type=str, default='./dataset/valid_split.json')
     parser.add_argument('--imgs_path', type=str, default='./dataset/image-sets')
+    parser.add_argument("--random_seed",  type=int)
     parser.add_argument("--job_id")
 
     args = parser.parse_args()
     assert args.activation in ['leaky-relu', 'relu', 'gelu']
     wandb.config.update(args)
+    print("random_seed:",args.random_seed)
+    random.seed(args.random_seed)
+    torch.manual_seed(args.random_seed)
 
     trainset = ImageCoDeDataset('dataset',split='train',image_transform=args.augmentation)
     validset = ImageCoDeDataset('dataset',split='valid')
