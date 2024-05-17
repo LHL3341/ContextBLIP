@@ -7,8 +7,6 @@
 '''
 import argparse
 import os
-#os.environ['CUDA_VISIBLE_DEVICES']="4,5,6,7"
-#os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 import ruamel.yaml as yaml
 import numpy as np
 import random
@@ -167,7 +165,7 @@ if __name__ == '__main__':
     parser.add_argument('--checkpoint', default='')    
     parser.add_argument('--mask_rate', type=float,default=0.25)    
     parser.add_argument('--prompt_length', type=int,default=0)
-    parser.add_argument('--reduction', type=int,default=2)
+    parser.add_argument('--reduction', type=int,default=16)
     parser.add_argument('--random_mask', default=False, type=bool)
     parser.add_argument('--evaluate', action='store_true',default=False)    
     parser.add_argument('--device', default='cuda')

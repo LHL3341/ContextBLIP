@@ -90,6 +90,7 @@ class Adapter_BLIP(nn.Module):
 
         for param in self.pretrained_blip.parameters():
             param.requires_grad = False
+        print('adatper params:',sum(p.numel() for p in self.vision_adapter.parameters() if p.requires_grad))
         
     def forward(self, image, caption,alpha=None):
         #t1= time()
@@ -327,7 +328,7 @@ def concat_all_gather(tensor):
     Performs all_gather operation on the provided tensors.
     *** Warning ***: torch.distributed.all_gather has no gradient.
     """
-    #if args.distributed == False:
+
     #return tensor
     
     tensors_gather = [torch.ones_like(tensor)

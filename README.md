@@ -1,10 +1,31 @@
+# ContextBLIP : Doubly Contextual Alignment for Contrastive Image Retrieval from Linguistically Complex Descriptions
+## Set up
+
+```
+conda create -n contextblip python=3.9
+conda activate contextblip
+pip install -r requirements.txt
+```
+
+## Data Preparation
+
+COCO, VG, IMAGECODE
+
+annotations.zip
+
+bert-base-uncased.zip
+
+model_base.pth
+
+## Experiments
+
 ### Pretrain
- 
-1. 将 bert-base-uncased.zip、annotations.zip、pos_tag.json和模型文件model_base_14M.pth 置于./
-2. 修改预训练配置文件configs/pretrain.yaml中的train_file字段为包含coco.json和vg.json所在路径的列表
-3. 将coco和vg的图片放在./pretrain_data/vl_pair文件夹下，结构如图
- <img src="https://github.com/LHL3341/Adapter-BLIP/blob/main/README.assets/image-20230905205831636.png" alt="image-20230905205919235" style="zoom:50%;" />
-4. 运行代码
+
+1. unzip bert-base-uncased.zip、annotations.zip in ./
+2. Modify the train_file field in the pretraining configuration file ./configs/pretrain.yaml to the list containing the paths where coco.json and vg.json reside
+3. The coco and vg images are stored in the./pretrain_data/vl_pair folder, like below:
+ ![1](D:\ContextBLIP\1.png)
+4. run code
 
 ```
 unzip bert-base-uncased.zip
@@ -13,55 +34,69 @@ bash run.sh
 ```
 
 ### Finetune
-1. 下载imagecode数据集
+1. download imagecode dataset
 
-   图片：[image-sets.zip · BennoKrojer/ImageCoDe at main (huggingface.co)](https://huggingface.co/datasets/BennoKrojer/ImageCoDe/blob/main/image-sets.zip)
+   images：[image-sets.zip · BennoKrojer/ImageCoDe at main (huggingface.co)](https://huggingface.co/datasets/BennoKrojer/ImageCoDe/blob/main/image-sets.zip)
 
-   标注：[imagecode/data at main · McGill-NLP/imagecode (github.com)](https://github.com/McGill-NLP/imagecode/tree/main/data)目录下的3个json文件，分别为训练、验证和测试集
+   annotations：[imagecode/data at main · McGill-NLP/imagecode (github.com)](https://github.com/McGill-NLP/imagecode/tree/main/data)
 
-2. ```bash
+   ```
    mkdir data
    mv image-sets.zip dataset/
    mv train_data.json dataset/
    mv valid_data.json dataset/
    mv test_data_unlabeled.json dataset/
    cd dataset
-   unzip image-sets.zip #若unzip无法解压大文件，可用7z解压或将数据集先转为tar.gz格式
+   unzip image-sets.zip
    ```
 
    
 
-3. 检查图片路径为./dataset/image-sets，标注路径为./dataset，如图所示<img src="https://github.com/LHL3341/Adapter-BLIP/blob/main/README.assets/image-20230907165345041.png" alt="image-20230905205919235" style="zoom:50%;" />
+2. 检查图片路径为./dataset/image-sets，标注路径为./dataset，如图所示
 
-4. ```bash
-   nohup python -u finetune.py --finetuned_checkpoint_path {预训练模型路径} > finetune.log 2>&1 & #开始训练
+   ![2](D:\ContextBLIP\2.png)
+
+3. run code
+
+   ```bash
+   nohup python -u finetune.py --finetuned_checkpoint_path {pretrained model path} > finetune.log 2>&1 & #开始训练
    ```
 
-### Zero-Shot
+### Zero-Shot on IMAGECODE
 ```bash
-python zero-shot.py --finetuned_checkpoint_path {预训练模型路径}
+python zero-shot_new.py --finetuned_checkpoint_path {pretrained model path}
 ```
 
-### Analysis
+### Task-specific Analysis
 ```bash
-python analysis/analysis_finetune.py --finetuned_checkpoint_path {预训练模型路径} #评估finetune模型
+python analysis/analysis_finetune.py --finetuned_checkpoint_path {finetuned model path} #评估finetune模型
+```
+
+### MMVP-VLM Benchmark
+
+you need to replace the finetune model path in line 58.
+
+```
+python evaluate_vlm_contextblip.py
+```
+
+### Comparison with GPT4
+
+you need to replace the API Key in line 58.
+
+```
+python sample.py #sample the subsets, random seed can be changed in the file
+# datapath need to be modified in the file
+# GPT4 API (You Need GPT4-vision API KEY)
+python GPT4v.py
+# ContextBLIP
+python analysis/gpt4_comparison.py
 ```
 
 ### Ablation Study
-消融实验中，通过调整命令行参数调整图像掩码率和文本prompt长度
+
+In the ablation experiment, the image mask rate was adjusted by adjusting the command line parameters
 ```bash
-#img_mask_rate={图片掩码率}
-#prompt_length={文本prompt长度}
-nohup python -u -m torch.distributed.run --nproc_per_node 4 main.py --mask_rate ${img_mask_rate} --prompt_length ${prompt_length} --output_dir 'output/Pretrain/'$img_mask_rate'_'$prompt_length'' > pretrain.log 2>&1 &
-```   
-### COCO-5k
-修改./configs/retrieval_coco.yaml中的pretrained字段为待测试检查点的路径
-```bash
-python train_retrieval.py --config configs/retrieval_coco.yaml --output_dir 'output/Retrieval_coco'
-```
-### Flickr30k-1k
-将flickr30k-images文件夹置于./pretrain_data下
-修改./configs/retrieval_flickr.yaml中的pretrained字段为待测试检查点的路径
-```bash
-python train_retrieval.py --config configs/retrieval_flickr.yaml --output_dir 'output/Retrieval_flickr'
+#img_mask_rate
+nohup python -u -m torch.distributed.run --nproc_per_node 4 main.py --mask_rate ${img_mask_rate} --output_dir 'output/Pretrain/'$img_mask_rate'' > pretrain.log 2>&1 &
 ```

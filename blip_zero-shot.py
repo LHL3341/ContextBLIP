@@ -26,16 +26,17 @@ from urllib.parse import urlparse
 from timm.models.hub import download_cached_file
 from models.blip import BLIP_Base, load_checkpoint
 from torchvision.transforms.functional import InterpolationMode
+from utils import pre_caption
 import yaml
 random.seed(10)
 torch.manual_seed(10)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--finetuned_checkpoint_path", default='model_base_14M.pth')
+parser.add_argument("--finetuned_checkpoint_path", default='model_base.pth')
 
-parser.add_argument('--valid_descr_path', type=str, default='./data/valid_data.json')
-parser.add_argument('--train_descr_path', type=str, default='./data/train_data.json')
-parser.add_argument('--imgs_path', type=str, default='./data/image-sets')
+parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
+parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
+parser.add_argument('--imgs_path', type=str, default='./dataset/image-sets')
 
 args = parser.parse_args()
 
@@ -106,7 +107,7 @@ for img_dir, img_idx, text in tqdm.tqdm(valid):
     images = [preprocess(image) for image in images]
     image = torch.stack(images).to(device)
     with torch.no_grad():
-        output = model(image, text, mode='multimodal')
+        output = model(image, pre_caption(text), mode='multimodal')
         logits = model.itm_head(output[:,0,:])
         itm_score = torch.nn.functional.softmax(logits,dim=1)[:,1]
     pred = torch.argmax(itm_score).squeeze()

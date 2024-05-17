@@ -1,13 +1,13 @@
-image_root: 'pretrain_data/'
-ann_root: 'annotation'
-dataset: 'flickr'
+image_root: "pretrain_data/"
+ann_root: "annotation"
+dataset: "flickr"
 
 # set pretrained as a file path or an url
-pretrained: 'output/Pretrain/0.5_0/checkpoint_12.pth'
+pretrained: "model_base.pth"
 
 # size of vit model; base or large
 
-vit: 'base'
+vit: "base"
 batch_size_train: 32
 batch_size_test: 64
 vit_grad_ckpt: True
@@ -31,4 +31,3 @@ negative_all_rank: False
 weight_decay: 0.05
 min_lr: 0
 max_epoch: 6
-

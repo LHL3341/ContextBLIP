@@ -1,13 +1,13 @@
-image_root: 'pretrain_data/vl_pair/coco'
-ann_root: 'annotation'
-dataset: 'coco'
+image_root: "pretrain_data/vl_pair/coco"
+ann_root: "annotation"
+dataset: "coco"
 
 # set pretrained as a file path or an url
-pretrained: 'output/Pretrain/0.5_0/checkpoint_12.pth'
+pretrained: "0.25_4_2d_3106.pth"
 
 # size of vit model; base or large
 
-vit: 'base'
+vit: "base"
 batch_size_train: 32
 batch_size_test: 64
 vit_grad_ckpt: True
@@ -31,4 +31,3 @@ negative_all_rank: True
 weight_decay: 0.05
 min_lr: 0
 max_epoch: 6
-

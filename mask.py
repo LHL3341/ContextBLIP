@@ -46,7 +46,7 @@ def random_mask(image,avg_attention_map,mask_rate=0.5,num_patches=196):
     unmasked_idx = indices[:,mask_num:]
     return patches,masked_idx,unmasked_idx
 
-def mask_image(image,avg_attention_map,mask_rate=0.5,num_patches=196,random_mask =False):
+def mask_image(image,avg_attention_map,mask_rate=0.5,num_patches=256,random_mask =False):
     patch_h = 16
     patch_w = 16
     b,c,h,w = image.shape

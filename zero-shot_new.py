@@ -36,11 +36,11 @@ random.seed(10)
 torch.manual_seed(10)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--finetuned_checkpoint_path", default='0.25_12.pth')
+parser.add_argument("--finetuned_checkpoint_path", default='Models/pretrain/0.25_2d/42/0.25_4_2d_3106.pth')
 
 parser.add_argument('--valid_descr_path', type=str, default='./dataset/valid_data.json')
 parser.add_argument('--train_descr_path', type=str, default='./dataset/train_data.json')
-parser.add_argument('--reduction', type=int, default=4)
+parser.add_argument('--reduction', type=int, default=2)
 parser.add_argument('--imgs_path', type=str, default='./dataset/image-sets')
 args = parser.parse_args()
 

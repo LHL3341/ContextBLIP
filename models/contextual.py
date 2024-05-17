@@ -77,7 +77,7 @@ class Adapter_BLIP(nn.Module):
                                         output_attentions = True,
                                        return_dict = True,
                                       ) # [b,30,768]      
-        if output_pos:
+        if output_attentions:
             attention_map = torch.stack(output_pos['cross_attentions'],dim=1)
             avg_attention_map = attention_map.mean(dim=1).mean(dim=1).detach()
             return output_pos.last_hidden_state, avg_attention_map    
