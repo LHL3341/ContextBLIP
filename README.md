@@ -1,4 +1,7 @@
 # ContextBLIP : Doubly Contextual Alignment for Contrastive Image Retrieval from Linguistically Complex Descriptions
+
+The code of the paper《ContextBLIP : Doubly Contextual Alignment for Contrastive Image Retrieval from Linguistically Complex Descriptions》(ACL 2024)
+
 ## Set up
 
 ```
@@ -24,7 +27,7 @@ model_base.pth
 1. unzip bert-base-uncased.zip、annotations.zip in ./
 2. Modify the train_file field in the pretraining configuration file ./configs/pretrain.yaml to the list containing the paths where coco.json and vg.json reside
 3. The coco and vg images are stored in the./pretrain_data/vl_pair folder, like below:
- ![1](D:\ContextBLIP\1.png)
+   <img src="https://github.com/LHL3341/BLIP-adapter/blob/main/1.png" alt="image-20230905205919235" style="zoom:50%;" />
 4. run code
 
 ```
@@ -52,9 +55,9 @@ bash run.sh
 
    
 
-2. 检查图片路径为./dataset/image-sets，标注路径为./dataset，如图所示
+2. Check that the image path is./dataset/image-sets and the marked path is./dataset, as shown in the following figure:
 
-   ![2](D:\ContextBLIP\2.png)
+   <img src="https://github.com/LHL3341/BLIP-adapter/blob/main/2.png" alt="image-2" style="zoom:50%;" />
 
 3. run code
 
